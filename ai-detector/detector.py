@@ -1,0 +1,149 @@
+import os, time, glob, threading, subprocess, requests, cv2
+import numpy as np
+from ultralytics import YOLO
+
+ACTIVE_CAMS = [4, 7, 9, 11, 12, 22, 23, 27, 28, 29, 31, 32, 35, 36, 37, 40, 41, 42, 44, 46, 48, 49, 51, 55, 59, 60, 62, 64]
+NOC_STREAM_URL = os.getenv("NOC_STREAM_URL", "")
+NOC_WEBHOOK = os.getenv("NOC_WEBHOOK", "")
+OUTPUT_DIR = "/recordings/incidents"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+if not os.path.exists("yolov8n_openvino_model"):
+    base_model = YOLO("yolov8n.pt")
+    base_model.export(format="openvino")
+
+model = YOLO("yolov8n_openvino_model", task="detect")
+
+# Select Intel UHD 730 iGPU if /dev/dri is available, else fallback to CPU
+INFER_DEVICE = "xpu" if os.path.exists("/dev/dri") else "cpu"
+print(f"[INFO] Starting 28-camera AI engine on OpenVINO device: {INFER_DEVICE}", flush=True)
+
+latest_frames = {}
+frame_locks = {ch: threading.Lock() for ch in ACTIVE_CAMS}
+prev_centers = {ch: {} for ch in ACTIVE_CAMS}
+overlap_streaks = {ch: {} for ch in ACTIVE_CAMS}
+cooldown_until = {ch: 0 for ch in ACTIVE_CAMS}
+
+def stream_reader(ch):
+    url = f"rtsp://mediamtx:8554/cam_{ch}_sub"
+    cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            time.sleep(2)
+            cap.release()
+            cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
+            continue
+        with frame_locks[ch]:
+            latest_frames[ch] = frame
+        time.sleep(0.20)
+
+for ch in ACTIVE_CAMS:
+    threading.Thread(target=stream_reader, args=(ch,), daemon=True).start()
+
+def compute_iou(boxA, boxB):
+    xA, yA = max(boxA[0], boxB[0]), max(boxA[1], boxB[1])
+    xB, yB = min(boxA[2], boxB[2]), min(boxA[3], boxB[3])
+    inter = max(0, xB - xA) * max(0, yB - yA)
+    areaA = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
+    areaB = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
+    return inter / float(areaA + areaB - inter + 1e-6)
+
+def handle_accident(ch, event_ts, frame):
+    print(f"[ALERT] Vehicle collision confirmed on CAM {ch} at {event_ts}", flush=True)
+    snap_path = f"{OUTPUT_DIR}/cam{ch}_snap_{int(event_ts)}.jpg"
+    cv2.imwrite(snap_path, frame)
+
+    if NOC_STREAM_URL:
+        try:
+            requests.patch(f"http://mediamtx:9997/v3/config/paths/patch/cam_{ch}_main", json={
+                "runOnReady": f"ffmpeg -re -i rtsp://localhost:8554/cam_{ch}_main -c copy -f rtsp {NOC_STREAM_URL}_cam{ch}",
+                "runOnReadyRestart": True
+            }, timeout=3)
+        except Exception as e:
+            print(f"[WARN] MediaMTX relay patch failed for CAM {ch}: {e}", flush=True)
+
+    if NOC_WEBHOOK:
+        try:
+            requests.post(NOC_WEBHOOK, json={
+                "camera_id": f"cam_{ch}",
+                "timestamp": event_ts,
+                "snapshot": snap_path,
+                "status": "ACTIVE_COLLISION"
+            }, timeout=3)
+        except Exception as e:
+            print(f"[WARN] NOC webhook failed: {e}", flush=True)
+
+    time.sleep(605)
+    segments = sorted(glob.glob(f"/recordings/cam_{ch}_main/*.mp4"))
+    window = [s for s in segments if (event_ts - 660) <= os.path.getmtime(s) <= (event_ts + 660)]
+    if window:
+        list_file = f"/tmp/concat_cam{ch}_{int(event_ts)}.txt"
+        with open(list_file, "w") as f:
+            for seg in window:
+                f.write(f"file '{seg}'\n")
+        out_mp4 = f"{OUTPUT_DIR}/cam{ch}_accident_{int(event_ts)}.mp4"
+        subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", list_file, "-c", "copy", out_mp4], check=True)
+        print(f"[SAVED] 20-minute incident clip written to {out_mp4}", flush=True)
+
+frames_processed = 0
+last_stat_time = time.time()
+
+while True:
+    loop_start = time.time()
+    now = loop_start
+    for ch in ACTIVE_CAMS:
+        frame = None
+        with frame_locks[ch]:
+            if ch in latest_frames:
+                frame = latest_frames[ch].copy()
+        if frame is None:
+            continue
+
+        # Run OpenVINO inference across all 28 cameras on Intel UHD 730 iGPU
+        results = model.predict(frame, device=INFER_DEVICE, conf=0.50, verbose=False)
+        boxes = results[0].boxes
+        frames_processed += 1
+
+        accident_detected = False
+        vehicles = []
+        if boxes is not None:
+            for idx, (box, cls_id) in enumerate(zip(boxes.xyxy.cpu().numpy(), boxes.cls.cpu().numpy())):
+                label = model.names[int(cls_id)].lower()
+                if "accident" in label or "crash" in label:
+                    accident_detected = True
+                elif label in {"car", "truck", "bus", "motorcycle"}:
+                    cx, cy = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+                    prev_cx, prev_cy, prev_speed = prev_centers[ch].get(idx, (cx, cy, 0.0))
+                    speed = np.hypot(cx - prev_cx, cy - prev_cy)
+                    prev_centers[ch][idx] = (cx, cy, speed)
+                    vehicles.append((idx, box, speed, prev_speed))
+
+            active_pairs = set()
+            for i in range(len(vehicles)):
+                for j in range(i + 1, len(vehicles)):
+                    pair = (i, j)
+                    if compute_iou(vehicles[i][1], vehicles[j][1]) > 0.30:
+                        active_pairs.add(pair)
+                        overlap_streaks[ch][pair] = overlap_streaks[ch].get(pair, 0) + 1
+                        sudden_stop = (vehicles[i][3] > 8.0 and vehicles[i][2] < 2.0) or (vehicles[j][3] > 8.0 and vehicles[j][2] < 2.0)
+                        if overlap_streaks[ch][pair] >= 3 and sudden_stop:
+                            accident_detected = True
+            for pair in list(overlap_streaks[ch].keys()):
+                if pair not in active_pairs:
+                    del overlap_streaks[ch][pair]
+
+        if accident_detected and now > cooldown_until[ch]:
+            cooldown_until[ch] = now + 600
+            threading.Thread(target=handle_accident, args=(ch, now, frame), daemon=True).start()
+
+    # Pace sweep to ~4 FPS per camera (112 FPS across 28 cams) to keep CPU cool
+    elapsed = time.time() - loop_start
+    if elapsed < 0.25:
+        time.sleep(0.25 - elapsed)
+
+    if now - last_stat_time >= 10.0:
+        fps = frames_processed / (now - last_stat_time)
+        print(f"[TELEMETRY] 28-Cam Total Throughput: {fps:.1f} FPS ({fps/len(ACTIVE_CAMS):.2f} FPS/cam) on {INFER_DEVICE}", flush=True)
+        frames_processed = 0
+        last_stat_time = now

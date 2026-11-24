@@ -1,0 +1,441 @@
+authInternalUsers:
+- user: any
+  pass:
+  ips: ['127.0.0.1', '::1', '172.16.0.0/12', '192.168.0.0/16']
+  permissions:
+  - action: publish
+  - action: read
+  - action: playback
+  - action: api
+  - action: metrics
+  - action: pprof
+
+api: yes
+apiAddress: :9997
+
+playback: yes
+playbackAddress: :9996
+
+webrtcAdditionalHosts: [192.168.3.236]
+
+paths:
+  cam_4_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=4&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_4_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=4&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_7_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=7&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_7_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=7&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_9_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=9&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_9_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=9&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_11_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=11&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_11_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=11&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_12_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=12&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_12_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=12&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_22_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=22&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_22_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=22&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_23_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=23&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_23_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=23&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_27_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=27&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_27_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=27&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_28_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=28&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_28_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=28&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_29_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=29&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_29_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=29&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_31_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=31&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_31_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=31&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_32_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=32&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_32_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=32&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_35_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=35&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_35_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=35&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_36_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=36&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_36_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=36&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_37_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=37&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_37_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=37&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_40_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=40&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_40_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=40&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_41_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=41&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_41_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=41&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_42_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=42&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_42_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=42&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_44_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=44&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_44_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=44&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_46_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=46&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_46_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=46&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_48_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=48&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_48_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=48&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_49_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=49&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_49_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=49&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_51_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=51&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_51_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=51&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_55_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=55&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_55_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=55&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_59_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=59&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_59_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=59&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_60_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=60&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_60_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=60&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_62_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=62&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_62_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=62&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  cam_64_main:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=64&ids=1
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: yes
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S.%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1m
+    recordDeleteAfter: 25m
+
+  cam_64_sub:
+    source: rtsp://admin:@192.168.3.240:554/mode=real&idc=64&ids=2
+    rtspTransport: tcp
+    sourceOnDemand: no
+

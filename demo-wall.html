@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Addsoft AI NVR & Media Gateway</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #0b0e14; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 16px; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #1e293b; padding-bottom: 10px; }
+    h2 { margin: 0; font-size: 18px; font-weight: 600; color: #38bdf8; }
+    .status { font-size: 13px; color: #94a3b8; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+    .cam-card { background: #000; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; position: relative; transition: border-color 0.2s; }
+    .cam-card:hover { border-color: #38bdf8; }
+    .cam-header { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent); z-index: 5; pointer-events: none; }
+    .cam-title { font-size: 13px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px #000; }
+    .btn { pointer-events: auto; background: rgba(15, 23, 42, 0.85); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer; font-weight: 600; }
+    .btn:hover { background: #38bdf8; color: #0f172a; }
+    iframe { width: 100%; height: 220px; border: none; display: block; }
+
+    /* Enlarged Theater + NVR Seek Modal */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(5, 8, 15, 0.96); z-index: 100; flex-direction: column; padding: 16px; }
+    .modal.active { display: flex; }
+    .modal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .modal-title { font-size: 18px; font-weight: 700; color: #38bdf8; }
+    .modal-viewer { flex: 1; background: #000; border: 1px solid #334155; border-radius: 8px; overflow: hidden; position: relative; }
+    .modal-viewer iframe, .modal-viewer video { width: 100%; height: 100%; border: none; object-fit: contain; }
+    .seek-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: #1e293b; padding: 10px 14px; border-radius: 8px; margin-top: 10px; }
+    .seek-bar label { font-size: 12px; color: #cbd5e1; }
+    .seek-bar input, .seek-bar select { background: #0f172a; color: #fff; border: 1px solid #475569; padding: 5px 8px; border-radius: 4px; font-size: 12px; }
+    .badge-live { background: #dc2626; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>Addsoft Edge AI &amp; Media Gateway (MediaMTX + OpenVINO + YOLOv8) Live WebRTC &amp; Forensic Seek</h2>
+    <div class="status" id="statusText">Scanning all 64 NVR channels...</div>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <!-- Enlarged Single-Camera + NVR Playback Seek View -->
+  <div class="modal" id="modal">
+    <div class="modal-top">
+      <div class="modal-title" id="modalTitle">Camera View</div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span class="badge-live" id="modeBadge">LIVE WEBRTC</span>
+        <button class="btn" onclick="switchToLive('sub')">Live (Fast)</button>
+        <button class="btn" onclick="switchToLive('main')">Live (4MP HD)</button>
+        <button class="btn" style="border-color:#f87171; color:#f87171;" onclick="closeModal()">Reduce / Back to Grid (Esc)</button>
+      </div>
+    </div>
+
+    <div class="modal-viewer" id="viewerContainer"></div>
+
+    <div class="seek-bar">
+      <label><strong>NVR Forensic Seek:</strong></label>
+      <label>Start Time: <input type="datetime-local" id="seekStart" step="1"></label>
+      <label>Clip Duration:
+        <select id="seekDuration">
+          <option value="60" selected>1 Minute</option>
+          <option value="180">3 Minutes</option>
+          <option value="300">5 Minutes</option>
+          <option value="600">10 Minutes</option>
+          <option value="1200">20 Minutes (-10/+10m)</option>
+        </select>
+      </label>
+      <button class="btn" onclick="playRecording()">Seek &amp; Play Recording</button>
+      <span style="font-size:11px; color:#94a3b8;" id="seekHint">Checking recorded buffer...</span>
+    </div>
+  </div>
+
+  <script>
+    const HOST = window.location.hostname || '192.168.3.236';
+
+    const camNames = {
+      4:  "Lift Lobby (CAM 04)",
+      7:  "Stairwell (CAM 07)",
+      9:  "Server Room (CAM 09)",
+      11: "Workstation Bay A (CAM 11)",
+      12: "Workstation Bay B (CAM 12)"
+    };
+
+    let activeCam = null;
+
+    function toLocalInputString(dateObj) {
+      const pad = n => String(n).padStart(2, '0');
+      return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}T${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}`;
+    }
+
+    async function loadActiveCameras() {
+      try {
+        const res = await fetch(`/api/v3/paths/list?itemsPerPage=200`);
+        const data = await res.json();
+
+        const online = (data.items || [])
+          .filter(p => p.name.endsWith('_sub') && p.ready === true)
+          .map(p => {
+            const ch = parseInt(p.name.split('_')[1], 10);
+            const label = camNames[ch] || `Camera ${String(ch).padStart(2, '0')} (CAM ${ch})`;
+            return { ch, label, subPath: `cam_${ch}_sub`, mainPath: `cam_${ch}_main` };
+          })
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+
+        online.forEach(cam => {
+          const card = document.createElement('div');
+          card.className = 'cam-card';
+          card.innerHTML = `
+            <div class="cam-header">
+              <span class="cam-title">${cam.label}</span>
+              <button class="btn" onclick="enlargeCam(${cam.ch}, '${cam.label.replace(/'/g, "\\'")}')">Enlarge</button>
+            </div>
+            <iframe src="http://${HOST}:8889/${cam.subPath}/"></iframe>
+          `;
+          grid.appendChild(card);
+        });
+
+        document.getElementById('statusText').textContent =
+          `${online.length} Active Cameras Online out of 64 Channels (Sorted Alphabetically)`;
+      } catch (err) {
+        document.getElementById('statusText').textContent =
+          `Error querying MediaMTX API: ${err.message}`;
+      }
+    }
+
+    async function enlargeCam(ch, label) {
+      activeCam = { ch, label, mainPath: `cam_${ch}_main`, subPath: `cam_${ch}_sub` };
+      document.getElementById('modalTitle').textContent = label;
+      document.getElementById('modal').classList.add('active');
+      switchToLive('sub');
+
+      // Query available recorded segments for this camera so seek timestamp is always valid
+      const hint = document.getElementById('seekHint');
+      hint.textContent = 'Checking available recording segments...';
+      try {
+        const listRes = await fetch(`/playback/list?path=${activeCam.subPath}`);
+        if (listRes.ok) {
+          const spans = await listRes.json();
+          if (spans && spans.length > 0) {
+            const earliest = new Date(spans[0].start);
+            const latestSpan = spans[spans.length - 1];
+            const latestEnd = new Date(new Date(latestSpan.start).getTime() + latestSpan.duration * 1000);
+            // Default to 90 seconds before latest recorded point
+            const defaultSeek = new Date(Math.max(earliest.getTime(), latestEnd.getTime() - 90000));
+            document.getElementById('seekStart').value = toLocalInputString(defaultSeek);
+            hint.textContent = `Available buffer: ${earliest.toLocaleTimeString()} to ${latestEnd.toLocaleTimeString()}`;
+            return;
+          }
+        }
+        hint.textContent = 'Recording just started — wait ~60s for first 1-min segment to flush.';
+      } catch (e) {
+        hint.textContent = `Buffer check note: ${e.message}`;
+      }
+    }
+
+    function switchToLive(quality = 'sub') {
+      if (!activeCam) return;
+      const streamPath = quality === 'main' ? activeCam.mainPath : activeCam.subPath;
+      document.getElementById('modeBadge').textContent = quality === 'main' ? 'LIVE 4MP HD WEBRTC' : 'LIVE WEBRTC (FAST)';
+      document.getElementById('modeBadge').style.background = '#dc2626';
+      document.getElementById('viewerContainer').innerHTML =
+        `<iframe src="http://${HOST}:8889/${streamPath}/"></iframe>`;
+    }
+
+    function playRecording() {
+      if (!activeCam) return;
+      const startVal = document.getElementById('seekStart').value;
+      const duration = document.getElementById('seekDuration').value;
+      if (!startVal) return alert('Choose a start date and time.');
+
+      const isoStart = new Date(startVal).toISOString();
+      const playbackUrl = `/playback/get?path=${activeCam.subPath}&start=${encodeURIComponent(isoStart)}&duration=${duration}&format=mp4`;
+
+      document.getElementById('modeBadge').textContent = 'RECORDED PLAYBACK (MP4)';
+      document.getElementById('modeBadge').style.background = '#0284c7';
+      document.getElementById('viewerContainer').innerHTML =
+        `<video src="${playbackUrl}" controls autoplay playsinline onerror="document.getElementById('seekHint').textContent='No recording found for that exact timestamp — pick a time within the available buffer window.'"></video>`;
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+      document.getElementById('viewerContainer').innerHTML = '';
+      activeCam = null;
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    loadActiveCameras();
+  </script>
+</body>
+</html>
