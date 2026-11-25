@@ -1,0 +1,16 @@
+﻿---
+- name: Deploy Edge AI Traffic Gateway
+  hosts: edge_nodes
+  become: yes
+  tasks:
+    - name: Pull latest code from GitHub
+      ansible.builtin.git:
+        repo: "https://github.com/gizmobrain/edge-ai-traffic-forensics.git"
+        dest: "/opt/traffic-ai"
+        version: "main"
+        force: yes
+
+    - name: Rebuild and restart updated Docker services
+      ansible.builtin.command:
+        cmd: docker compose up -d --build
+        chdir: "/opt/traffic-ai"
