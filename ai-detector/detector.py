@@ -57,7 +57,7 @@ def handle_accident(ch, event_ts, frame):
     if NOC_STREAM_URL:
         try:
             requests.patch(f"http://mediamtx:9997/v3/config/paths/patch/cam_{ch}_main", json={
-                "runOnReady": f"ffmpeg -re -i rtsp://localhost:8554/cam_{ch}_main -c copy -f rtsp {NOC_STREAM_URL}_cam{ch}",
+                "runOnReady": f"ffmpeg -re -i rtsp://localhost:8554/cam_{ch}_main -c copy -f rtsp {NOC_STREAM_URL}_{SITE_ID}_cam_{ch}",
                 "runOnReadyRestart": True
             }, timeout=3)
         except Exception as e:
@@ -65,12 +65,14 @@ def handle_accident(ch, event_ts, frame):
 
     if NOC_WEBHOOK:
         try:
-            requests.post(NOC_WEBHOOK, json={
-                "camera_id": f"cam_{ch}",
-                "timestamp": event_ts,
-                "snapshot": snap_path,
-                "status": "ACTIVE_COLLISION"
-            }, timeout=3)
+            SITE_ID = os.getenv("SITE_ID", "CTC_OFFICE_01")
+            with open(snap_path, "rb") as img:
+                requests.post(
+                    f"{NOC_WEBHOOK}/api/accident-alert",
+                    data={"site_id": SITE_ID, "camera_id": f"cam_{ch}", "timestamp": str(event_ts)},
+                    files={"snapshot": (os.path.basename(snap_path), img, "image/jpeg")},
+                    timeout=5
+                )
         except Exception as e:
             print(f"[WARN] NOC webhook failed: {e}", flush=True)
 
@@ -134,7 +136,7 @@ while True:
                     del overlap_streaks[ch][pair]
 
         if accident_detected and now > cooldown_until[ch]:
-            cooldown_until[ch] = now + 600
+            cooldown_until[ch] = now + 30
             threading.Thread(target=handle_accident, args=(ch, now, frame), daemon=True).start()
 
     # Pace sweep to ~4 FPS per camera (112 FPS across 28 cams) to keep CPU cool
