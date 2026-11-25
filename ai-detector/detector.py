@@ -129,12 +129,12 @@ while True:
                     iou = compute_iou(vehicles[i][1], vehicles[j][1])
                     if ch == 64 and iou > 0.10:
                         print(f"[TEST-CAM64] Vehicle overlap IoU={iou:.2f}, speeds=({vehicles[i][2]:.1f}, {vehicles[j][2]:.1f})", flush=True)
-                    thresh = 0.18 if ch == 64 else 0.30
+                    thresh = 0.10 if ch == 64 else 0.30
                     req_streak = 1 if ch == 64 else 3
                     if iou > thresh:
                         active_pairs.add(pair)
                         overlap_streaks[ch][pair] = overlap_streaks[ch].get(pair, 0) + 1
-                        sudden_stop = (vehicles[i][3] > 6.0 and vehicles[i][2] < 4.0) or (vehicles[j][3] > 6.0 and vehicles[j][2] < 4.0) or (ch == 64 and iou > 0.28)
+                        sudden_stop = (vehicles[i][3] > 6.0 and vehicles[i][2] < 4.0) or (vehicles[j][3] > 6.0 and vehicles[j][2] < 4.0) or (ch == 64 and iou > 0.10)
                         if overlap_streaks[ch][pair] >= req_streak and sudden_stop:
                             accident_detected = True
             for pair in list(overlap_streaks[ch].keys()):
