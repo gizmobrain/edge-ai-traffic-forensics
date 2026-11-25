@@ -56,13 +56,14 @@ def handle_accident(ch, event_ts, frame):
     cv2.imwrite(snap_path, frame)
 
     if NOC_STREAM_URL:
-        try:
-            requests.patch(f"http://mediamtx:9997/v3/config/paths/patch/cam_{ch}_main", json={
-                "runOnReady": f"ffmpeg -re -i rtsp://localhost:8554/cam_{ch}_main -c copy -f rtsp {NOC_STREAM_URL}_{SITE_ID}_cam_{ch}",
-                "runOnReadyRestart": True
-            }, timeout=3)
-        except Exception as e:
-            print(f"[WARN] MediaMTX relay patch failed for CAM {ch}: {e}", flush=True)
+        target_rtsp = f"{NOC_STREAM_URL}_{SITE_ID}_cam_{ch}"
+        print(f"[RELAY] Pushing live stream to {target_rtsp}", flush=True)
+        subprocess.Popen([
+            "ffmpeg", "-hide_banner", "-loglevel", "error",
+            "-rtsp_transport", "tcp", "-i", f"rtsp://mediamtx:8554/cam_{ch}_main",
+            "-t", "600", "-c:v", "copy", "-an",
+            "-rtsp_transport", "tcp", "-f", "rtsp", target_rtsp
+        ])
 
     if NOC_WEBHOOK:
         try:
