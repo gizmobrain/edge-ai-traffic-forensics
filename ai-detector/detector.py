@@ -50,6 +50,7 @@ def compute_iou(boxA, boxB):
     return inter / float(areaA + areaB - inter + 1e-6)
 
 def handle_accident(ch, event_ts, frame):
+    SITE_ID = os.getenv("SITE_ID", "CTC_OFFICE_01")
     print(f"[ALERT] Vehicle collision confirmed on CAM {ch} at {event_ts}", flush=True)
     snap_path = f"{OUTPUT_DIR}/cam{ch}_snap_{int(event_ts)}.jpg"
     cv2.imwrite(snap_path, frame)
