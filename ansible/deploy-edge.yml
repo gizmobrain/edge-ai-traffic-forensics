@@ -1,5 +1,5 @@
 ---
-- name: Deploy Edge AI Traffic Gateway
+- name: Deploy Edge AI Traffic Gateway (ctc-aicam)
   hosts: edge_nodes
   become: yes
   tasks:

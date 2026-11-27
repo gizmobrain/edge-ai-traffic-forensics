@@ -1,5 +1,5 @@
-﻿---
-- name: Deploy Central NOC Command Center to ctc-srv10
+---
+- name: Deploy Central NOC Command Center (ctc-srv10)
   hosts: ctc_srv10
   become: yes
   tasks:
