@@ -200,8 +200,8 @@ def ai_loop():
                     inj = active_injections.get(ch)
 
                 # Slightly more responsive overlap check during active single-shot demo injection
-                iou_thresh = 0.22 if inj else 0.30
-                req_streak = 2 if inj else 3
+                iou_thresh = 0.12 if inj else 0.30
+                req_streak = 1 if inj else 3
 
                 active_pairs = set()
                 for i in range(len(vehicles)):
@@ -215,7 +215,7 @@ def ai_loop():
                                 (vehicles[j][3] > 6.0 and vehicles[j][2] < 3.0) or
                                 (inj is not None)
                             )
-                            if overlap_streaks[ch][pair] >= req_streak and sudden_stop:
+                            if overlap_streaks[ch][pair] >= req_streak and (sudden_stop or inj):
                                 accident_detected = True
                                 for nb in norm_boxes:
                                     nb["alert"] = True

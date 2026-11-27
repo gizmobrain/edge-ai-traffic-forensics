@@ -309,6 +309,24 @@
     function drawOverlayBoxes(ch, boxes) {
       const canvas = document.getElementById(`canvas-${ch}`);
       if (!canvas) return;
+            const wrap = canvas.parentElement;
+      const inj = (ActiveInjections && ActiveInjections[String(ch)]);
+      let vid = wrap.querySelector('video.inj-player');
+      if (inj && inj.clip) {
+        if (!vid) {
+          vid = document.createElement('video');
+          vid.className = 'inj-player';
+          vid.src = '/ai-api/clips/file/' + encodeURIComponent(inj.clip) + '?t=' + encodeURIComponent(inj.injection_id || '');
+          vid.autoplay = true;
+          vid.muted = true;
+          vid.playsInline = true;
+          vid.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;z-index:5;background:#000;';
+          wrap.appendChild(vid);
+        }
+      } else if (vid) {
+        vid.remove();
+      }
+
       const ctx = canvas.getContext('2d');
       const cw = canvas.width, chH = canvas.height;
       ctx.clearRect(0, 0, cw, chH);
@@ -335,7 +353,7 @@
     function openInjectModal() {
       const camSel = document.getElementById('injectCamSelect');
       camSel.innerHTML = activeCameras.map(c =>
-        `<option value="${c.ch}" ${c.ch === 64 ? 'selected' : ''}>${c.label}</option>`
+        `<option value="${c.ch}" ${idx === 0 ? 'selected' : ''}>${c.label}</option>`
       ).join('');
       refreshClipDropdown();
       document.getElementById('injectStatus').textContent = '';
