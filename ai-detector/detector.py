@@ -1,6 +1,7 @@
 import os, re, time, glob, uuid, threading, subprocess, requests, cv2
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import uvicorn
 from ultralytics import YOLO
@@ -319,45 +320,22 @@ async def upload_clip(file: UploadFile = File(...)):
     return {"clip": safe_name, "status": "normalized"}
 
 def run_single_shot_injection(ch: int, clip_path: str, injection_id: str, prev_mode: str):
-    sub_name = f"cam_{ch}_sub"
-    main_name = f"cam_{ch}_main"
+    print(f"[INJECT] Playing single-shot {clip_path} on CAM {ch} (id={injection_id})", flush=True)
     try:
-        # 1. Switch MediaMTX paths to publisher mode and wait for NVR session teardown
-        r1 = requests.patch(f"http://mediamtx:9997/v3/config/paths/patch/{sub_name}", json={"source": "publisher", "sourceOnDemand": False}, timeout=3)
-        r2 = requests.patch(f"http://mediamtx:9997/v3/config/paths/patch/{main_name}", json={"source": "publisher", "sourceOnDemand": False}, timeout=3)
-        print(f"[INJECT] MediaMTX patch status sub={r1.status_code} main={r2.status_code}", flush=True)
-        time.sleep(1.2)
-
-        # 2. Stream clip ONCE simultaneously to _sub and _main
-        print(f"[INJECT] Playing single-shot {clip_path} on CAM {ch} (id={injection_id})", flush=True)
-        ff = subprocess.run([
-            "ffmpeg", "-hide_banner", "-loglevel", "warning",
-            "-re", "-i", clip_path,
-            "-map", "0:v:0", "-c:v", "copy", "-an", "-rtsp_transport", "tcp", "-f", "rtsp", f"rtsp://mediamty:8554/{sub_name}",
-            "-map", "0:v:0", "-c:v", "copy", "-an", "-rtsp_transport", "tcp", "-f", "rtsp", f"rtsp://mediamtx:8554/{main_name}"
-        ], capture_output=True, text=True)
-        if ff.returncode != 0 or ff.stderr.strip():
-            print(f"[INJECT] FFmpeg rc={ff.returncode} out={ff.stderr.strip()}", flush=True)
+        deadline = time.time() + 25.0
+        while time.time() < deadline:
+            with inject_lock:
+                cur = active_injections.get(ch)
+                if not cur or cur.get("injection_id") != injection_id:
+                    break
+            time.sleep(0.25)
     finally:
-        # 3. Restore original NVR RTSP URLs cleanly
-        orig_sub = ORIGINAL_SOURCES.get(sub_name)
-        orig_main = ORIGINAL_SOURCES.get(main_name)
-        if orig_sub:
-            requests.patch(f"http://mediamtx:9997/v3/config/paths/patch/{sub_name}", json={"source": orig_sub}, timeout=3)
-        if orig_main:
-            requests.patch(f"http://mediamtx:9997/v3/config/paths/patch/{main_name}", json={"source": orig_main}, timeout=3)
         with inject_lock:
-            active_injections.pop(ch, None)
+            cur = active_injections.get(ch)
+            if cur and cur.get("injection_id") == injection_id:
+                active_injections.pop(ch, None)
         cam_modes[ch] = prev_mode
         print(f"[INJECT] Completed & restored live NVR feed on CAM {ch} (mode={prev_mode})", flush=True)
-
-@app.delete("/clips/{clip_name}")
-def delete_clip(clip_name: str):
-    target = os.path.join(CLIPS_DIR, os.path.basename(clip_name))
-    if not os.path.exists(target):
-        raise HTTPException(status_code=404, detail="Clip not found")
-    os.remove(target)
-    return {"deleted": os.path.basename(clip_name)}
 
 @app.post("/inject")
 def trigger_inject(req: InjectRequest):
