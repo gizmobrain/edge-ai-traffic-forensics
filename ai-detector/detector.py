@@ -359,6 +359,60 @@ def trigger_inject(req: InjectRequest):
     ).start()
     return {"status": "started", "ch": req.ch, "injection_id": inj_id, "mode": cam_modes[req.ch]}
 
+
+class UrlClipRequest(BaseModel):
+    url: str
+    clip_name: str = ""
+    start_sec: float = 0.0
+    duration_sec: float = 15.0
+
+@app.post("/clips/fetch-url")
+def fetch_clip_from_url(req: UrlClipRequest):
+    url = req.url.strip()
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="Enter a valid http:// or https:// URL")
+
+    base_name = req.clip_name.strip() or f"yt_crash_{uuid.uuid4().hex[:6]}"
+    safe_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", base_name)
+    if not safe_name.lower().endswith(".mp4"):
+        safe_name += ".mp4"
+
+    raw_path = f"/tmp/dl_{uuid.uuid4().hex[:8]}.mp4"
+    out_path = f"{CLIPS_DIR}/{safe_name}"
+
+    # 1. Download best MP4/video up to 720p using yt-dlp
+    dl_cmd = [
+        "yt-dlp", "--no-playlist",
+        "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best",
+        "--merge-output-format", "mp4",
+        "-o", raw_path,
+        url
+    ]
+    dl_res = subprocess.run(dl_cmd, capture_output=True, text=True, timeout=120)
+    if dl_res.returncode != 0 or not os.path.exists(raw_path):
+        raise HTTPException(status_code=500, detail=f"yt-dlp download failed: {dl_res.stderr[-300:]}")
+
+    # 2. Trim & normalize to 1280x720, 25fps, H.264 Baseline, 1:1 SAR, no B-frames
+    ff_cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"]
+    if req.start_sec > 0:
+        ff_cmd += ["-ss", str(req.start_sec)]
+    ff_cmd += ["-i", raw_path]
+    if req.duration_sec > 0:
+        ff_cmd += ["-t", str(req.duration_sec)]
+    ff_cmd += [
+        "-vf", "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25",
+        "-c:v", "libx264", "-profile:v", "baseline", "-level", "3.1",
+        "-pix_fmt", "yuv420p", "-g", "25", "-keyint_min", "25", "-sc_threshold", "0", "-bf", "0",
+        "-an", out_path
+    ]
+    ff_res = subprocess.run(ff_cmd, capture_output=True, text=True)
+    if os.path.exists(raw_path):
+        os.remove(raw_path)
+    if ff_res.returncode != 0:
+        raise HTTPException(status_code=500, detail=f"FFmpeg normalize failed: {ff_res.stderr}")
+
+    return {"clip": safe_name, "status": "normalized"}
+
 if __name__ == "__main__":
     threading.Thread(target=ai_loop, daemon=True).start()
     uvicorn.run(app, host="0.0.0.0", port=8080, log_level="warning")

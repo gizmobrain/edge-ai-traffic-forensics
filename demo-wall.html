@@ -80,7 +80,22 @@
       <p>Plays a normalized 16:9 crash clip <strong>once</strong> on the selected camera, triggers <strong>1 single alert</strong> (with automatic deduplication), and immediately restores the live NVR feed when finished.</p>
 
       <div class="form-row">
-        <label>1. Upload &amp; Auto-Normalize New MP4 Clip (Optional — converts to 1280×720 H.264 Baseline)</label>
+        <label>1A. Fetch &amp; Normalize from YouTube / Video URL (Optional)</label>
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="clipUrlInput" placeholder="https://www.youtube.com/watch?v=..." style="flex:1; background:#1e293b; color:#f8fafc; border:1px solid #475569; border-radius:6px; padding:7px 10px; font-size:12px;">
+          <button class="btn btn-purple" onclick="fetchClipFromUrl()">Fetch URL</button>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+          <span style="font-size:11px; color:#94a3b8;">Trim Start (s):</span>
+          <input type="number" id="clipStartSec" value="0" min="0" step="1" style="width:65px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px; padding:4px 6px; font-size:12px;">
+          <span style="font-size:11px; color:#94a3b8;">Duration (s):</span>
+          <input type="number" id="clipDurSec" value="15" min="3" max="60" step="1" style="width:65px; background:#1e293b; color:#fff; border:1px solid #475569; border-radius:4px; padding:4px 6px; font-size:12px;">
+          <span style="font-size:11px; color:#64748b;">(Auto-converts to 1280×720 H.264)</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>1B. Or Upload Local MP4 File (Optional)</label>
         <div style="display:flex; gap:8px;">
           <input type="file" id="clipFileInput" accept="video/mp4,video/*" style="flex:1;">
           <button class="btn" onclick="uploadAndNormalizeClip()">Upload</button>
@@ -342,6 +357,31 @@
       ).join('');
     }
 
+        async function fetchClipFromUrl() {
+      const url = document.getElementById('clipUrlInput').value.trim();
+      const startSec = parseFloat(document.getElementById('clipStartSec').value) || 0;
+      const durationSec = parseFloat(document.getElementById('clipDurSec').value) || 15;
+      const status = document.getElementById('injectStatus');
+      if (!url) {
+        status.textContent = 'Paste a YouTube or direct MP4 URL first.';
+        return;
+      }
+      status.textContent = 'Downloading via yt-dlp & normalizing to 1280×720 H.264 (takes ~5–10s)...';
+      try {
+        const res = await fetch(`/control/clips/fetch-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, start_sec: startSec, duration_sec: durationSec })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'URL fetch failed');
+        if (!availableClips.includes(data.clip)) availableClips.push(data.clip);
+        refreshClipDropdown(data.clip);
+        status.textContent = `Ready: ${data.clip} downloaded & normalized!`;
+      } catch (e) {
+        status.textContent = `Error: ${e.message}`;
+      }
+    }
     async function uploadAndNormalizeClip() {
       const input = document.getElementById('clipFileInput');
       const status = document.getElementById('injectStatus');
