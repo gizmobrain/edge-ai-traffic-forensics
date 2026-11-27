@@ -304,19 +304,22 @@ def run_single_shot_injection(ch: int, clip_path: str, injection_id: str, prev_m
     sub_name = f"cam_{ch}_sub"
     main_name = f"cam_{ch}_main"
     try:
-        # 1. Switch MediaMTX paths to publisher mode so ffmpeg can push the single-shot clip
-        requests.patch(f"http://mediamtx:9997/v3/config/paths/patch/{sub_name}", json={"source": "publisher"}, timeout=3)
-        requests.patch(f"http://mediamtx:9997/v3/config/paths/patch/{main_name}", json={"source": "publisher"}, timeout=3)
-        time.sleep(0.5)
+        # 1. Switch MediaMTX paths to publisher mode and wait for NVR session teardown
+        r1 = requests.patch(f"http://mediamtx:9997/v3/config/paths/patch/{sub_name}", json={"source": "publisher", "sourceOnDemand": False}, timeout=3)
+        r2 = requests.patch(f"http://mediamtx:9997/v3/config/paths/patch/{main_name}", json={"source": "publisher", "sourceOnDemand": False}, timeout=3)
+        print(f"[INJECT] MediaMTX patch status sub={r1.status_code} main={r2.status_code}", flush=True)
+        time.sleep(1.2)
 
-        # 2. Stream clip ONCE (no -stream_loop -1) simultaneously to _sub and _main
+        # 2. Stream clip ONCE simultaneously to _sub and _main
         print(f"[INJECT] Playing single-shot {clip_path} on CAM {ch} (id={injection_id})", flush=True)
-        subprocess.run([
-            "ffmpeg", "-hide_banner", "-loglevel", "error",
+        ff = subprocess.run([
+            "ffmpeg", "-hide_banner", "-loglevel", "warning",
             "-re", "-i", clip_path,
-            "-c:v", "copy", "-an", "-rtsp_transport", "tcp", "-f", "rtsp", f"rtsp://mediamtx:8554/{sub_name}",
-            "-c:v", "copy", "-an", "-rtsp_transport", "tcp", "-f", "rtsp", f"rtsp://mediamtx:8554/{main_name}"
-        ])
+            "-map", "0:v:0", "-c:v", "copy", "-an", "-rtsp_transport", "tcp", "-f", "rtsp", f"rtsp://mediamty:8554/{sub_name}",
+            "-map", "0:v:0", "-c:v", "copy", "-an", "-rtsp_transport", "tcp", "-f", "rtsp", f"rtsp://mediamtx:8554/{main_name}"
+        ], capture_output=True, text=True)
+        if ff.returncode != 0 or ff.stderr.strip():
+            print(f"[INJECT] FFmpeg rc={ff.returncode} out={ff.stderr.strip()}", flush=True)
     finally:
         # 3. Restore original NVR RTSP URLs cleanly
         orig_sub = ORIGINAL_SOURCES.get(sub_name)
