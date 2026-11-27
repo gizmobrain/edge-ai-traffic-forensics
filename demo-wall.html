@@ -298,29 +298,29 @@
 
         activeCameras.forEach(cam => {
           const key = String(cam.ch);
-          applyCardState(cam.ch, camModes[key] || 'muted', Boolean(injections[key]));
-          drawOverlayBoxes(cam.ch, boxesMap[key] || []);
+          const inj = injections[key] || null;
+          applyCardState(cam.ch, camModes[key] || 'muted', Boolean(inj));
+          drawOverlayBoxes(cam.ch, boxesMap[key] || [], inj);
         });
         updateHeaderStatus();
       } catch (e) { /* silent retry */ }
     }
 
     // Draw normalized 0..1 boxes inside letterboxed 16:9 content rectangle
-    function drawOverlayBoxes(ch, boxes) {
+    function drawOverlayBoxes(ch, boxes, inj = null) {
       const canvas = document.getElementById(`canvas-${ch}`);
       if (!canvas) return;
-            const wrap = canvas.parentElement;
-      const inj = (ActiveInjections && ActiveInjections[String(ch)]);
+      const wrap = canvas.parentElement;
       let vid = wrap.querySelector('video.inj-player');
       if (inj && inj.clip) {
         if (!vid) {
           vid = document.createElement('video');
           vid.className = 'inj-player';
-          vid.src = '/ai-api/clips/file/' + encodeURIComponent(inj.clip) + '?t=' + encodeURIComponent(inj.injection_id || '');
+          vid.src = '/control/clips/file/' + encodeURIComponent(inj.clip) + '?t=' + encodeURIComponent(inj.injection_id || '');
           vid.autoplay = true;
           vid.muted = true;
           vid.playsInline = true;
-          vid.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;z-index:5;background:#000;';
+          vid.style.cssText = 'width:100%;height:100%;object-fit:contain;position:absolute;inset:0;z-index:5;background:#000;';
           wrap.appendChild(vid);
         }
       } else if (vid) {
@@ -352,7 +352,7 @@
     // Crash Injector Dialog Handlers
     function openInjectModal() {
       const camSel = document.getElementById('injectCamSelect');
-      camSel.innerHTML = activeCameras.map(c =>
+      camSel.innerHTML = activeCameras.map((c, idx) =>
         `<option value="${c.ch}" ${idx === 0 ? 'selected' : ''}>${c.label}</option>`
       ).join('');
       refreshClipDropdown();
@@ -392,32 +392,6 @@
           body: JSON.stringify({ url, start_sec: startSec, duration_sec: durationSec })
         });
         const data = await res.json();
-    if (data && data.injections) {
-      document.querySelectorAll('[data-cam], [id^="tile-"], +cam-tile').forEach(tile => {
-        const m = (data.cams ? (tile.dataset.cam || tile.id || tile.textContent || '') : '').match(/\b(\d{1,2})\b/);
-        if (!m) return;
-        const ch = m[1];
-        const inj = data.injections[ch];
-        const iframe = tile.querySelector('iframe');
-        let vid = tile.querySelector('video.inj-player');
-        if (inj && inj.clip) {
-          if (!vid && iframe) {
-            vid = document.createElement('video');
-            vid.className = 'inj-player';
-            vid.src = '/ai-api/clips/file/' + encodeURIComponent(inj.clip) + '?t=' + encodeURIComponent(inj.injection_id || '');
-            vid.autoplay = true;
-            vid.muted = true;
-            vid.playsInline = true;
-            vid.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;z-index:5;background:#000;';
-            iframe.parentElement.style.position = 'relative';
-            iframe.parentElement.appendChild(vid);
-          }
-        } else if (vid) {
-          vid.remove();
-        }
-      });
-    }
-
         if (!res.ok) throw new Error(data.detail || 'URL fetch failed');
         if (!availableClips.includes(data.clip)) availableClips.push(data.clip);
         refreshClipDropdown(data.clip);
@@ -439,32 +413,6 @@
       try {
         const res = await fetch(`/control/clips/upload`, { method: 'POST', body: fd });
         const data = await res.json();
-    if (data && data.injections) {
-      document.querySelectorAll('[data-cam], [id^="tile-"], +cam-tile').forEach(tile => {
-        const m = (data.cams ? (tile.dataset.cam || tile.id || tile.textContent || '') : '').match(/\b(\d{1,2})\b/);
-        if (!m) return;
-        const ch = m[1];
-        const inj = data.injections[ch];
-        const iframe = tile.querySelector('iframe');
-        let vid = tile.querySelector('video.inj-player');
-        if (inj && inj.clip) {
-          if (!vid && iframe) {
-            vid = document.createElement('video');
-            vid.className = 'inj-player';
-            vid.src = '/ai-api/clips/file/' + encodeURIComponent(inj.clip) + '?t=' + encodeURIComponent(inj.injection_id || '');
-            vid.autoplay = true;
-            vid.muted = true;
-            vid.playsInline = true;
-            vid.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;z-index:5;background:#000;';
-            iframe.parentElement.style.position = 'relative';
-            iframe.parentElement.appendChild(vid);
-          }
-        } else if (vid) {
-          vid.remove();
-        }
-      });
-    }
-
         if (!res.ok) throw new Error(data.detail || 'Upload failed');
         if (!availableClips.includes(data.clip)) availableClips.push(data.clip);
         refreshClipDropdown(data.clip);
@@ -491,32 +439,6 @@
           body: JSON.stringify({ ch, clip, auto_arm: autoArm })
         });
         const data = await res.json();
-    if (data && data.injections) {
-      document.querySelectorAll('[data-cam], [id^="tile-"], +cam-tile').forEach(tile => {
-        const m = (data.cams ? (tile.dataset.cam || tile.id || tile.textContent || '') : '').match(/\b(\d{1,2})\b/);
-        if (!m) return;
-        const ch = m[1];
-        const inj = data.injections[ch];
-        const iframe = tile.querySelector('iframe');
-        let vid = tile.querySelector('video.inj-player');
-        if (inj && inj.clip) {
-          if (!vid && iframe) {
-            vid = document.createElement('video');
-            vid.className = 'inj-player';
-            vid.src = '/ai-api/clips/file/' + encodeURIComponent(inj.clip) + '?t=' + encodeURIComponent(inj.injection_id || '');
-            vid.autoplay = true;
-            vid.muted = true;
-            vid.playsInline = true;
-            vid.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;z-index:5;background:#000;';
-            iframe.parentElement.style.position = 'relative';
-            iframe.parentElement.appendChild(vid);
-          }
-        } else if (vid) {
-          vid.remove();
-        }
-      });
-    }
-
         if (!res.ok) throw new Error(data.detail || 'Injection failed');
         status.textContent = `Injected (${data.injection_id}) on CAM ${ch}! Returning to wall...`;
         setTimeout(closeInjectModal, 900);
@@ -621,7 +543,7 @@
       const sel = document.getElementById('injClip');
       if (!sel || !sel.value) return;
       if (!confirm('Delete saved clip ' + sel.value + '?')) return;
-      await fetch('/ai-api/clips/' + encodeURIComponent(sel.value), { method: 'DELETE' });
+      await fetch('/control/clips/' + encodeURIComponent(sel.value), { method: 'DELETE' });
       if (typeof syncState === 'function') syncState();
     }
 </script>

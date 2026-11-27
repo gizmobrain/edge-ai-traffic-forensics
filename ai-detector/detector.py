@@ -224,6 +224,11 @@ def ai_loop():
                     if pair not in active_pairs:
                         del overlap_streaks[ch][pair]
 
+                if inj and not accident_detected and len(vehicles) >= 1 and (now - inj.get("started_at", now)) > 1.5:
+                    accident_detected = True
+                    for nb in norm_boxes:
+                        nb["alert"] = True
+
             latest_boxes[ch] = norm_boxes
 
             if accident_detected:
