@@ -495,6 +495,13 @@
 
     loadActiveCameras();
     setInterval(pollControllerState, 500);
-  </script>
+  async function deleteSelectedClip() {
+      const sel = document.getElementById('injClip');
+      if (!sel || !sel.value) return;
+      if (!confirm('Delete saved clip ' + sel.value + '?')) return;
+      await fetch('/ai-api/clips/' + encodeURIComponent(sel.value), { method: 'DELETE' });
+      if (typeof syncState === 'function') syncState();
+    }
+</script>
 </body>
 </html>
