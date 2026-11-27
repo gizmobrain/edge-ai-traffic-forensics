@@ -28,6 +28,7 @@ services:
       - /dev/dri:/dev/dri
     volumes:
       - ./recordings:/recordings
+      - ./mediamtx.yml:/app/mediamtx.yml:ro
 
   demo-wall:
     image: nginx:alpine

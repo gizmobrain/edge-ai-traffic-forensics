@@ -2,24 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Addsoft AI NVR & Media Gateway</title>
+  <title>Addsoft I3C Edge AI & Media Gateway — Demo Control Wall</title>
   <style>
     * { box-sizing: border-box; }
-    body { background: #0b0e14; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 16px; }
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid #1e293b; padding-bottom: 10px; }
-    h2 { margin: 0; font-size: 18px; font-weight: 600; color: #38bdf8; }
-    .status { font-size: 13px; color: #94a3b8; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
-    .cam-card { background: #000; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; position: relative; transition: border-color 0.2s; }
-    .cam-card:hover { border-color: #38bdf8; }
-    .cam-header { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent); z-index: 5; pointer-events: none; }
-    .cam-title { font-size: 13px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px #000; }
-    .btn { pointer-events: auto; background: rgba(15, 23, 42, 0.85); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer; font-weight: 600; }
-    .btn:hover { background: #38bdf8; color: #0f172a; }
-    iframe { width: 100%; height: 220px; border: none; display: block; }
+    body { background: #0b0e14; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 14px 16px; }
+    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; border-bottom: 1px solid #1e293b; padding-bottom: 10px; }
+    h2 { margin: 0; font-size: 17px; font-weight: 600; color: #38bdf8; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .status { font-size: 12px; color: #94a3b8; margin-right: 6px; }
 
-    /* Enlarged Theater + NVR Seek Modal */
-    .modal { display: none; position: fixed; inset: 0; background: rgba(5, 8, 15, 0.96); z-index: 100; flex-direction: column; padding: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+    .cam-card { background: #000; border: 2px solid #1e293b; border-radius: 8px; overflow: hidden; position: relative; transition: border-color 0.2s, box-shadow 0.2s; }
+    .cam-card.state-armed { border-color: #ef4444; box-shadow: 0 0 12px rgba(239, 68, 68, 0.28); }
+    .cam-card.state-test { border-color: #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.22); }
+    .cam-card.state-injecting { border-color: #a855f7; box-shadow: 0 0 16px rgba(168, 85, 247, 0.5); }
+
+    .cam-header { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent); z-index: 10; gap: 6px; }
+    .cam-title { font-size: 12px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cam-actions { display: flex; gap: 5px; align-items: center; }
+
+    .btn { background: rgba(15, 23, 42, 0.9); color: #38bdf8; border: 1px solid #38bdf8; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; font-weight: 600; }
+    .btn:hover { background: #38bdf8; color: #0f172a; }
+    .btn-danger { border-color: #ef4444; color: #fca5a5; }
+    .btn-danger:hover { background: #ef4444; color: #fff; }
+    .btn-purple { border-color: #c084fc; color: #e9d5ff; }
+    .btn-purple:hover { background: #a855f7; color: #fff; }
+
+    .mode-pill { border-radius: 4px; padding: 3px 7px; font-size: 10px; font-weight: 700; cursor: pointer; border: 1px solid transparent; text-transform: uppercase; letter-spacing: 0.4px; }
+    .mode-muted { background: rgba(30, 41, 59, 0.92); color: #94a3b8; border-color: #475569; }
+    .mode-armed { background: #dc2626; color: #fff; border-color: #fca5a5; }
+    .mode-test  { background: #d97706; color: #fff; border-color: #fcd34d; }
+
+    .video-wrap { position: relative; width: 100%; height: 220px; background: #05070a; }
+    .video-wrap iframe { width: 100%; height: 100%; border: none; display: block; }
+    .box-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; }
+
+    /* Modals */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(5, 8, 15, 0.94); z-index: 100; flex-direction: column; padding: 16px; }
     .modal.active { display: flex; }
     .modal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     .modal-title { font-size: 18px; font-weight: 700; color: #38bdf8; }
@@ -29,15 +48,70 @@
     .seek-bar label { font-size: 12px; color: #cbd5e1; }
     .seek-bar input, .seek-bar select { background: #0f172a; color: #fff; border: 1px solid #475569; padding: 5px 8px; border-radius: 4px; font-size: 12px; }
     .badge-live { background: #dc2626; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+
+    /* Crash Injector Dialog */
+    .dialog-card { max-width: 520px; width: 100%; margin: auto; background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.7); }
+    .dialog-card h3 { margin: 0 0 6px 0; color: #c084fc; font-size: 17px; }
+    .dialog-card p { margin: 0 0 14px 0; font-size: 12px; color: #94a3b8; line-height: 1.45; }
+    .form-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    .form-row label { font-size: 12px; font-weight: 600; color: #cbd5e1; }
+    .form-row select, .form-row input[type="file"] { background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; padding: 7px 10px; font-size: 13px; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
   </style>
 </head>
 <body>
   <header>
-    <h2>Addsoft Edge AI &amp; Media Gateway (MediaMTX + OpenVINO + YOLOv8) Live WebRTC &amp; Forensic Seek</h2>
-    <div class="status" id="statusText">Scanning all 64 NVR channels...</div>
+    <div>
+      <h2>Addsoft Edge AI &amp; Media Gateway — Federated Demo Wall</h2>
+      <div class="status" id="statusText">Scanning NVR channels &amp; AI controller...</div>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-purple" onclick="openInjectModal()">⚡ Single-Shot Crash Simulator</button>
+      <button class="btn btn-danger" onclick="muteAllCameras()">🔕 Mute All Alerts</button>
+    </div>
   </header>
 
   <div class="grid" id="grid"></div>
+
+  <!-- Single-Shot Crash Injector Dialog -->
+  <div class="modal" id="injectModal">
+    <div class="dialog-card">
+      <h3>⚡ Single-Shot Crash Simulator</h3>
+      <p>Plays a normalized 16:9 crash clip <strong>once</strong> on the selected camera, triggers <strong>1 single alert</strong> (with automatic deduplication), and immediately restores the live NVR feed when finished.</p>
+
+      <div class="form-row">
+        <label>1. Upload &amp; Auto-Normalize New MP4 Clip (Optional — converts to 1280×720 H.264 Baseline)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="file" id="clipFileInput" accept="video/mp4,video/*" style="flex:1;">
+          <button class="btn" onclick="uploadAndNormalizeClip()">Upload</button>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>2. Target Camera</label>
+        <select id="injectCamSelect"></select>
+      </div>
+
+      <div class="form-row">
+        <label>3. Normalized Crash Clip</label>
+        <select id="injectClipSelect">
+          <option value="">-- Loading clips --</option>
+        </select>
+      </div>
+
+      <div class="form-row" style="flex-direction:row; align-items:center; gap:8px;">
+        <input type="checkbox" id="injectAutoArm" checked>
+        <label for="injectAutoArm" style="font-weight:400;">Temporarily Arm camera for Telegram + NOC Wall pop-up during clip, then revert</label>
+      </div>
+
+      <div id="injectStatus" style="font-size:12px; color:#38bdf8; min-height:18px;"></div>
+
+      <div class="dialog-actions">
+        <button class="btn" style="border-color:#64748b; color:#cbd5e1;" onclick="closeInjectModal()">Cancel</button>
+        <button class="btn btn-purple" onclick="triggerCrashInjection()">▶ Inject Single-Shot Crash</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Enlarged Single-Camera + NVR Playback Seek View -->
   <div class="modal" id="modal">
@@ -47,7 +121,7 @@
         <span class="badge-live" id="modeBadge">LIVE WEBRTC</span>
         <button class="btn" onclick="switchToLive('sub')">Live (Fast)</button>
         <button class="btn" onclick="switchToLive('main')">Live (4MP HD)</button>
-        <button class="btn" style="border-color:#f87171; color:#f87171;" onclick="closeModal()">Reduce / Back to Grid (Esc)</button>
+        <button class="btn btn-danger" onclick="closeModal()">Back to Grid (Esc)</button>
       </div>
     </div>
 
@@ -62,7 +136,6 @@
           <option value="180">3 Minutes</option>
           <option value="300">5 Minutes</option>
           <option value="600">10 Minutes</option>
-          <option value="1200">20 Minutes (-10/+10m)</option>
         </select>
       </label>
       <button class="btn" onclick="playRecording()">Seek &amp; Play Recording</button>
@@ -72,7 +145,6 @@
 
   <script>
     const HOST = window.location.hostname || '192.168.3.236';
-
     const camNames = {
       4:  "Lift Lobby (CAM 04)",
       7:  "Stairwell (CAM 07)",
@@ -81,6 +153,9 @@
       12: "Workstation Bay B (CAM 12)"
     };
 
+    let activeCameras = [];
+    let camModes = {};
+    let availableClips = [];
     let activeCam = null;
 
     function toLocalInputString(dateObj) {
@@ -90,49 +165,237 @@
 
     async function loadActiveCameras() {
       try {
-        const res = await fetch(`/api/v3/paths/list?itemsPerPage=200`);
-        const data = await res.json();
+        const [pathsRes, ctrlRes] = await Promise.all([
+          fetch(`/api/v3/paths/list?itemsPerPage=200`),
+          fetch(`/control/state`).catch(() => null)
+        ]);
+        const data = await pathsRes.json();
+        if (ctrlRes && ctrlRes.ok) {
+          const st = await ctrlRes.json();
+          camModes = st.modes || {};
+          availableClips = st.clips || [];
+        }
 
-        const online = (data.items || [])
+        activeCameras = (data.items || [])
           .filter(p => p.name.endsWith('_sub') && p.ready === true)
           .map(p => {
             const ch = parseInt(p.name.split('_')[1], 10);
             const label = camNames[ch] || `Camera ${String(ch).padStart(2, '0')} (CAM ${ch})`;
             return { ch, label, subPath: `cam_${ch}_sub`, mainPath: `cam_${ch}_main` };
           })
-          .sort((a, b) => a.label.localeCompare(b.label));
+          .sort((a, b) => a.ch - b.ch);
 
-        const grid = document.getElementById('grid');
-        grid.innerHTML = '';
-
-        online.forEach(cam => {
-          const card = document.createElement('div');
-          card.className = 'cam-card';
-          card.innerHTML = `
-            <div class="cam-header">
-              <span class="cam-title">${cam.label}</span>
-              <button class="btn" onclick="enlargeCam(${cam.ch}, '${cam.label.replace(/'/g, "\\'")}')">Enlarge</button>
-            </div>
-            <iframe src="http://${HOST}:8889/${cam.subPath}/"></iframe>
-          `;
-          grid.appendChild(card);
-        });
-
-        document.getElementById('statusText').textContent =
-          `${online.length} Active Cameras Online out of 64 Channels (Sorted Alphabetically)`;
+        renderGrid();
       } catch (err) {
-        document.getElementById('statusText').textContent =
-          `Error querying MediaMTX API: ${err.message}`;
+        document.getElementById('statusText').textContent = `Error loading streams: ${err.message}`;
       }
     }
 
+    function renderGrid() {
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+
+      activeCameras.forEach(cam => {
+        const mode = camModes[String(cam.ch)] || 'muted';
+        const card = document.createElement('div');
+        card.className = `cam-card state-${mode}`;
+        card.id = `card-${cam.ch}`;
+        card.innerHTML = `
+          <div class="cam-header">
+            <span class="cam-title">${cam.label}</span>
+            <div class="cam-actions">
+              <button class="mode-pill mode-${mode}" id="pill-${cam.ch}" onclick="cycleCamMode(${cam.ch})" title="Click to toggle Muted / Armed / Test">
+                ${mode === 'armed' ? '🚨 ARMED' : mode === 'test' ? '🧪 TEST' : '🔕 MUTED'}
+              </button>
+              <button class="btn" onclick="enlargeCam(${cam.ch}, '${cam.label.replace(/'/g, "\\'")}')">Enlarge</button>
+            </div>
+          </div>
+          <div class="video-wrap">
+            <iframe src="http://${HOST}:8889/${cam.subPath}/" loading="lazy"></iframe>
+            <canvas class="box-canvas" id="canvas-${cam.ch}" width="640" height="360"></canvas>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      updateHeaderStatus();
+    }
+
+    function updateHeaderStatus() {
+      const armedCount = Object.values(camModes).filter(m => m === 'armed').length;
+      const testCount = Object.values(camModes).filter(m => m === 'test').length;
+      document.getElementById('statusText').textContent =
+        `${activeCameras.length} Online Cameras | Armed: ${armedCount} | Test: ${testCount} (Click badge on any tile to toggle alerts)`;
+    }
+
+    async function cycleCamMode(ch) {
+      const order = ['muted', 'armed', 'test'];
+      const curr = camModes[String(ch)] || 'muted';
+      const next = order[(order.indexOf(curr) + 1) % order.length];
+      try {
+        const res = await fetch(`/control/mode/${ch}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: next })
+        });
+        if (res.ok) {
+          camModes[String(ch)] = next;
+          applyCardState(ch, next, false);
+          updateHeaderStatus();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function muteAllCameras() {
+      try {
+        await fetch(`/control/mute-all`, { method: 'POST' });
+        Object.keys(camModes).forEach(k => {
+          camModes[k] = 'muted';
+          applyCardState(parseInt(k, 10), 'muted', false);
+        });
+        updateHeaderStatus();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function applyCardState(ch, mode, isInjecting) {
+      const card = document.getElementById(`card-${ch}`);
+      const pill = document.getElementById(`pill-${ch}`);
+      if (!card || !pill) return;
+      card.className = `cam-card state-${mode}${isInjecting ? ' state-injecting' : ''}`;
+      pill.className = `mode-pill mode-${mode}`;
+      pill.textContent = isInjecting ? '⚡ INJECTING' : (mode === 'armed' ? '🚨 ARMED' : mode === 'test' ? '🧪 TEST' : '🔕 MUTED');
+    }
+
+    // Poll AI controller state every 500ms for live bounding boxes & injection status
+    async function pollControllerState() {
+      try {
+        const res = await fetch(`/control/state`);
+        if (!res.ok) return;
+        const st = await res.json();
+        camModes = st.modes || camModes;
+        availableClips = st.clips || availableClips;
+        const boxesMap = st.boxes || {};
+        const injections = st.injections || {};
+
+        activeCameras.forEach(cam => {
+          const key = String(cam.ch);
+          applyCardState(cam.ch, camModes[key] || 'muted', Boolean(injections[key]));
+          drawOverlayBoxes(cam.ch, boxesMap[key] || []);
+        });
+        updateHeaderStatus();
+      } catch (e) { /* silent retry */ }
+    }
+
+    // Draw normalized 0..1 boxes inside letterboxed 16:9 content rectangle
+    function drawOverlayBoxes(ch, boxes) {
+      const canvas = document.getElementById(`canvas-${ch}`);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const cw = canvas.width, chH = canvas.height;
+      ctx.clearRect(0, 0, cw, chH);
+      if (!boxes || boxes.length === 0) return;
+
+      boxes.forEach(b => {
+        const x = b.x1 * cw, y = b.y1 * chH;
+        const w = (b.x2 - b.x1) * cw, h = (b.y2 - b.y1) * chH;
+        ctx.strokeStyle = b.alert ? '#ef4444' : '#38bdf8';
+        ctx.lineWidth = b.alert ? 3 : 2;
+        ctx.strokeRect(x, y, w, h);
+
+        const tag = `${b.label} ${Math.round(b.conf * 100)}%`;
+        ctx.font = 'bold 11px system-ui, sans-serif';
+        const tw = ctx.measureText(tag).width + 8;
+        ctx.fillStyle = b.alert ? 'rgba(220,38,38,0.9)' : 'rgba(15,23,42,0.85)';
+        ctx.fillRect(x, Math.max(0, y - 16), tw, 16);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(tag, x + 4, Math.max(12, y - 4));
+      });
+    }
+
+    // Crash Injector Dialog Handlers
+    function openInjectModal() {
+      const camSel = document.getElementById('injectCamSelect');
+      camSel.innerHTML = activeCameras.map(c =>
+        `<option value="${c.ch}" ${c.ch === 64 ? 'selected' : ''}>${c.label}</option>`
+      ).join('');
+      refreshClipDropdown();
+      document.getElementById('injectStatus').textContent = '';
+      document.getElementById('injectModal').classList.add('active');
+    }
+
+    function closeInjectModal() {
+      document.getElementById('injectModal').classList.remove('active');
+    }
+
+    function refreshClipDropdown(selectedClip = '') {
+      const clipSel = document.getElementById('injectClipSelect');
+      if (availableClips.length === 0) {
+        clipSel.innerHTML = `<option value="">No normalized clips yet — upload an MP4 above</option>`;
+        return;
+      }
+      clipSel.innerHTML = availableClips.map(c =>
+        `<option value="${c}" ${c === selectedClip ? 'selected' : ''}>${c}</option>`
+      ).join('');
+    }
+
+    async function uploadAndNormalizeClip() {
+      const input = document.getElementById('clipFileInput');
+      const status = document.getElementById('injectStatus');
+      if (!input.files || !input.files[0]) {
+        status.textContent = 'Select a video file first.';
+        return;
+      }
+      const fd = new FormData();
+      fd.append('file', input.files[0]);
+      status.textContent = 'Uploading & normalizing clip to 1280×720 H.264 Baseline...';
+      try {
+        const res = await fetch(`/control/clips/upload`, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Upload failed');
+        if (!availableClips.includes(data.clip)) availableClips.push(data.clip);
+        refreshClipDropdown(data.clip);
+        status.textContent = `Ready: ${data.clip} normalized for WebRTC.`;
+      } catch (e) {
+        status.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    async function triggerCrashInjection() {
+      const ch = parseInt(document.getElementById('injectCamSelect').value, 10);
+      const clip = document.getElementById('injectClipSelect').value;
+      const autoArm = document.getElementById('injectAutoArm').checked;
+      const status = document.getElementById('injectStatus');
+      if (!clip) {
+        status.textContent = 'Select or upload a crash clip first.';
+        return;
+      }
+      status.textContent = `Starting single-shot crash injection on CAM ${ch}...`;
+      try {
+        const res = await fetch(`/control/inject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ch, clip, auto_arm: autoArm })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Injection failed');
+        status.textContent = `Injected (${data.injection_id}) on CAM ${ch}! Returning to wall...`;
+        setTimeout(closeInjectModal, 900);
+      } catch (e) {
+        status.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    // Enlarge & NVR Seek Handlers
     async function enlargeCam(ch, label) {
       activeCam = { ch, label, mainPath: `cam_${ch}_main`, subPath: `cam_${ch}_sub` };
       document.getElementById('modalTitle').textContent = label;
       document.getElementById('modal').classList.add('active');
       switchToLive('sub');
 
-      // Query available recorded segments for this camera so seek timestamp is always valid
       const hint = document.getElementById('seekHint');
       hint.textContent = 'Checking available recording segments...';
       try {
@@ -143,14 +406,13 @@
             const earliest = new Date(spans[0].start);
             const latestSpan = spans[spans.length - 1];
             const latestEnd = new Date(new Date(latestSpan.start).getTime() + latestSpan.duration * 1000);
-            // Default to 90 seconds before latest recorded point
             const defaultSeek = new Date(Math.max(earliest.getTime(), latestEnd.getTime() - 90000));
             document.getElementById('seekStart').value = toLocalInputString(defaultSeek);
             hint.textContent = `Available buffer: ${earliest.toLocaleTimeString()} to ${latestEnd.toLocaleTimeString()}`;
             return;
           }
         }
-        hint.textContent = 'Recording just started — wait ~60s for first 1-min segment to flush.';
+        hint.textContent = 'Recording buffer warming up — wait ~60s for first segment.';
       } catch (e) {
         hint.textContent = `Buffer check note: ${e.message}`;
       }
@@ -170,14 +432,12 @@
       const startVal = document.getElementById('seekStart').value;
       const duration = document.getElementById('seekDuration').value;
       if (!startVal) return alert('Choose a start date and time.');
-
       const isoStart = new Date(startVal).toISOString();
       const playbackUrl = `/playback/get?path=${activeCam.subPath}&start=${encodeURIComponent(isoStart)}&duration=${duration}&format=mp4`;
-
       document.getElementById('modeBadge').textContent = 'RECORDED PLAYBACK (MP4)';
       document.getElementById('modeBadge').style.background = '#0284c7';
       document.getElementById('viewerContainer').innerHTML =
-        `<video src="${playbackUrl}" controls autoplay playsinline onerror="document.getElementById('seekHint').textContent='No recording found for that exact timestamp — pick a time within the available buffer window.'"></video>`;
+        `<video src="${playbackUrl}" controls autoplay playsinline onerror="document.getElementById('seekHint').textContent='No recording found for that timestamp.'"></video>`;
     }
 
     function closeModal() {
@@ -186,9 +446,15 @@
       activeCam = null;
     }
 
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        closeModal();
+        closeInjectModal();
+      }
+    });
 
     loadActiveCameras();
+    setInterval(pollControllerState, 500);
   </script>
 </body>
 </html>
