@@ -56,18 +56,36 @@ active_injections = {}  # ch -> {"injection_id": str, "clip": str, "triggered": 
 inject_lock = threading.Lock()
 
 def stream_reader(ch):
-    url = f"rtsp://mediamtx:8554/cam_{ch}_sub"
-    cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
+    rtsp_url = f"rtsp://mediamty:8554/cam_{ch}_sub"
+    cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+    active_clip = None
     while True:
+        with inject_lock:
+            inj = active_injections.get(ch)
+            want_clip = inj.get("clip_path") if inj else None
+
+        if want_clip != active_clip:
+            cap.release()
+            active_clip = want_clip
+            cap = cv2.VideoCapture(active_clip if active_clip else rtsp_url, cv2.CAP_FFMPEG)
+
         ret, frame = cap.read()
         if not ret:
+            if active_clip:
+                with inject_lock:
+                    active_injections.pop(ch, None)
+                active_clip = None
+                cap.release()
+                cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+                continue
             time.sleep(2)
             cap.release()
-            cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
+            cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
             continue
+
         with frame_locks[ch]:
             latest_frames[ch] = frame
-        time.sleep(0.15)
+        time.sleep(0.04 if active_clip else 0.15)
 
 for ch in ACTIVE_CAMS:
     threading.Thread(target=stream_reader, args=(ch,), daemon=True).start()
@@ -335,11 +353,12 @@ def run_single_shot_injection(ch: int, clip_path: str, injection_id: str, prev_m
 
 @app.delete("/clips/{clip_name}")
 def delete_clip(clip_name: str):
-target = os.path.join(CLIPS_DIR, os.path.basename(clip_name))
-if not os.path.exists(target):
-    raise HTTPException(status_code=404, detail="Clip not found")
-os.remove(target)
-return {"deleted": os.path.basename(clip_name)}
+    target = os.path.join(CLIPS_DIR, os.path.basename(clip_name))
+    if not os.path.exists(target):
+        raise HTTPException(status_code=404, detail="Clip not found")
+    os.remove(target)
+    return {"deleted": os.path.basename(clip_name)}
+
 @app.post("/inject")
 def trigger_inject(req: InjectRequest):
     if req.ch not in cam_modes:
