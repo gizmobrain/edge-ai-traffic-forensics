@@ -1,23 +1,23 @@
 ---
 - name: Deploy Central NOC Command Center (ctc-srv10)
-hosts: ctc_srv10
-become: yes
-tasks:
-- name: Sync noc-receiver main.py
-  ansible.builtin.copy:
-    src: ../noc/main.py
-    dest: /opt/noc-receiver/app/main.py
-    mode: "0644"
+  hosts: ctc_srv10
+  become: yes
+  tasks:
+    - name: Sync noc-receiver main.py
+      ansible.builtin.copy:
+        src: ../noc/main.py
+        dest: /opt/noc-receiver/app/main.py
+        mode: "0644"
 
-- name: Sync Caddyfile and NOC Dashboard UI
-  ansible.builtin.copy:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    mode: "0644"
-  loop:
-    - { src: "../noc/Caddyfile", dest: "/opt/reverse-proxy/Caddyfile" }
-    - { src: "../noc/index.html", dest: "/opt/reverse-proxy/index.html" }
+    - name: Sync Caddyfile and NOC Dashboard UI
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "0644"
+      loop:
+        - { src: "../noc/Caddyfile", dest: "/opt/reverse-proxy/Caddyfile" }
+        - { src: "../noc/index.html", dest: "/opt/reverse-proxy/index.html" }
 
-- name: Restart noc-receiver and caddy-proxy
-  ansible.builtin.command:
-    cmd: docker restart noc-receiver caddy-proxy
+    - name: Restart noc-receiver and caddy-proxy
+      ansible.builtin.command:
+        cmd: docker restart noc-receiver caddy-proxy
