@@ -327,7 +327,7 @@ async def upload_clip(file: UploadFile = File(...)):
 def run_single_shot_injection(ch: int, clip_path: str, injection_id: str, prev_mode: str):
     print(f"[INJECT] Playing single-shot {clip_path} on CAM {ch} (id={injection_id})", flush=True)
     try:
-        deadline = time.time() + 25.0
+        deadline = time.time() + 65.0
         while time.time() < deadline:
             with inject_lock:
                 cur = active_injections.get(ch)
@@ -424,6 +424,15 @@ def fetch_clip_from_url(req: UrlClipRequest):
         raise HTTPException(status_code=500, detail=f"FFmpeg normalize failed: {ff_res.stderr}")
 
     return {"clip": safe_name, "status": "normalized"}
+
+
+@app.get("/clips/file/{clip_name}")
+def serve_clip_file(clip_name: str):
+    safe = os.path.basename(clip_name)
+    path = f"{CLIPS_DIR}/{safe}"
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Clip file not found")
+    return FileResponse(path, media_type="video/mp4")
 
 if __name__ == "__main__":
     threading.Thread(target=ai_loop, daemon=True).start()
