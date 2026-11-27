@@ -1,4 +1,4 @@
----
+﻿---
 - name: Deploy Central NOC Command Center to ctc-srv10
   hosts: ctc_srv10
   become: true

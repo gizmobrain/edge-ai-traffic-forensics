@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -7,10 +7,13 @@
     * { box-sizing: border-box; }
     body { margin: 0; background: #060911; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
     header { background: #0b1120; border-bottom: 1px solid #1e293b; padding: 10px 18px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; z-index: 20; }
-    .brand { display: flex; align-items: center; gap: 10px; }
-    .brand-dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 10px #22c55e; }
-    .brand h1 { margin: 0; font-size: 16px; font-weight: 700; color: #38bdf8; letter-spacing: 0.3px; }
-    .brand span { font-size: 11px; color: #94a3b8; display: block; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .addsoft-logo { display: flex; align-items: center; gap: 8px; background: #0f172a; border: 1px solid #1e3a5f; padding: 5px 10px; border-radius: 8px; }
+    .brand-title h1 { margin: 0; font-size: 15px; font-weight: 700; color: #38bdf8; letter-spacing: 0.3px; }
+    .brand-title span { font-size: 11px; color: #94a3b8; display: block; }
+    .suite-links { display: flex; gap: 6px; align-items: center; border-right: 1px solid #1e293b; padding-right: 10px; margin-right: 4px; }
+    .suite-link { font-size: 11px; color: #94a3b8; text-decoration: none; padding: 4px 7px; border-radius: 4px; background: #0f172a; border: 1px solid #1e293b; }
+    .suite-link:hover { color: #38bdf8; border-color: #38bdf8; }
     .zone-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
     .zone-pill { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
     .zone-pill.active { background: #0284c7; color: #fff; border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.35); }
@@ -71,13 +74,31 @@
 <body>
   <header>
     <div class="brand">
-      <div class="brand-dot"></div>
-      <div>
-        <h1>ADDSOFT I3C — UNIFIED COMMAND &amp; CONTROL CENTER</h1>
+      <div class="addsoft-logo" id="addsoftlogo" title="Addsoft Technologies Limited">
+        <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="7" fill="#0284C7"/>
+          <path d="M16 6L25 25H20.8L18.9 20.8H13.1L11.2 25H7L16 6ZM16 12.6L14.4 17.2H17.6L16 12.6Z" fill="#FFFFFF"/>
+          <circle cx="24.5" cy="8.5" r="2.5" fill="#38BDF8"/>
+        </svg>
+        <div style="line-height:1.1;">
+          <div style="font-size:13px; font-weight:800; color:#ffffff; letter-spacing:0.6px;">ADDSOFT</div>
+          <div style="font-size:9px; font-weight:600; color:#38bdf8; letter-spacing:1px;">TECHNOLOGIES</div>
+        </div>
+      </div>
+      <div class="brand-title">
+        <h1>I3C UNIFIED COMMAND &amp; CONTROL CENTER</h1>
         <span id="nocClock">Federated Edge AI Telemetry • Node: ctc-srv10 (192.168.3.203)</span>
       </div>
     </div>
+
     <div class="zone-bar">
+      <div class="suite-links">
+        <a class="suite-link" href="http://192.168.3.236:8090/" target="_blank">Edge Wall</a>
+        <a class="suite-link" href="http://ansible.addsoft.local" target="_blank">Ansible</a>
+        <a class="suite-link" href="http://librenms.addsoft.local" target="_blank">LibreNMS</a>
+        <a class="suite-link" href="http://zabbix.addsoft.local" target="_blank">Zabbix</a>
+        <a class="suite-link" href="http://grafana.addsoft.local" target="_blank">Grafana</a>
+      </div>
       <button class="zone-pill active" onclick="selectZone(0)">Zone 1: Cuttack Core</button>
       <button class="zone-pill" onclick="selectZone(1)">Zone 2: Bhubaneswar</button>
       <button class="zone-pill" onclick="selectZone(2)">Zone 3: Active Incident Relays</button>
@@ -85,6 +106,7 @@
       <button class="btn btn-warn" onclick="triggerDemoDrill()">⚡ Test NOC Alert</button>
     </div>
   </header>
+
   <div class="workspace">
     <div class="wall-stage">
       <div class="zone-layer visible" id="zone-0"></div>
@@ -101,6 +123,7 @@
       </div>
     </aside>
   </div>
+
   <div class="modal-backdrop" id="triageModal">
     <div class="triage-modal">
       <div class="modal-banner">
@@ -137,6 +160,7 @@
       </div>
     </div>
   </div>
+
   <script>
     const EDGE_HOST = '192.168.3.236';
     const NOC_HOST = window.location.hostname || '192.168.3.203';

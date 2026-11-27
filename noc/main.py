@@ -1,4 +1,4 @@
-import os, json, uuid, time, smtplib, requests
+﻿import os, json, uuid, time, smtplib, requests
 from datetime import datetime
 from email.message import EmailMessage
 from typing import Optional
@@ -8,12 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 app = FastAPI(title="Addsoft I3C Central NOC Incident Engine")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 EVIDENCE_DIR = "/evidence"
 DB_FILE = f"{EVIDENCE_DIR}/incidents_db.json"
@@ -24,22 +19,13 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
 ALERT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO", "")
-
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 NOC_PUBLIC_HOST = os.getenv("NOC_PUBLIC_HOST", "192.168.3.203")
 
 ZONE_METADATA = {
-    "CTC_OFFICE_01": {
-        "zone": "Zone 1: Cuttack Core & NH-16",
-        "corridor": "Link Road – Badambadi – OMP Square",
-        "coords": "20.4625° N, 85.8830° E"
-    },
-    "BBSR_SOUTH_01": {
-        "zone": "Zone 2: Bhubaneswar & Rasulgarh",
-        "corridor": "Vani Vihar – Patia – Nandankanan Rd",
-        "coords": "20.2961° N, 85.8245° E"
-    }
+    "CTC_OFFICE_01": {"zone": "Zone 1: Cuttack Core & NH-16", "corridor": "Link Road - Badambadi - OMP Square", "coords": "20.4625 N, 85.8830 E"},
+    "BBSR_SOUTH_01": {"zone": "Zone 2: Bhubaneswar & Rasulgarh", "corridor": "Vani Vihar - Patia - Nandankanan Rd", "coords": "20.2961 N, 85.8245 E"}
 }
 
 def load_incidents():
@@ -90,72 +76,35 @@ def send_telegram_alert(caption: str, snap_path: str = None):
         print(f"[WARN] Telegram dispatch error: {e}", flush=True)
 
 @app.post("/api/accident-alert")
-async def receive_alert(
-    site_id: str = Form(...),
-    camera_id: str = Form(...),
-    timestamp: str = Form(...),
-    injection_id: str = Form(""),
-    snapshot: UploadFile = File(None)
-):
+async def receive_alert(site_id: str = Form(...), camera_id: str = Form(...), timestamp: str = Form(...), injection_id: str = Form(""), snapshot: UploadFile = File(None)):
     incidents = load_incidents()
     now_ts = float(timestamp) if timestamp else time.time()
-
     for inc in reversed(incidents[-20:]):
         if injection_id and inc.get("injection_id") == injection_id:
             return {"status": "duplicate_ignored", "incident_id": inc["id"]}
         if inc.get("site_id") == site_id and inc.get("camera_id") == camera_id and abs(now_ts - inc.get("epoch", 0)) < 25:
             return {"status": "cooldown_ignored", "incident_id": inc["id"]}
-
     ts_str = datetime.fromtimestamp(now_ts).strftime("%Y-%m-%d %H:%M:%S")
-    snap_filename = None
-    snap_path = None
+    snap_filename, snap_path = None, None
     if snapshot:
         snap_filename = f"{site_id}_{camera_id}_{int(now_ts)}.jpg"
         snap_path = f"{EVIDENCE_DIR}/{snap_filename}"
         with open(snap_path, "wb") as f:
             f.write(await snapshot.read())
-
-    meta = ZONE_METADATA.get(site_id, {
-        "zone": "Zone 1: Cuttack Core & NH-16",
-        "corridor": "Regional Arterial Corridor",
-        "coords": "20.4625° N, 85.8830° E"
-    })
-
+    meta = ZONE_METADATA.get(site_id, {"zone": "Zone 1: Cuttack Core & NH-16", "corridor": "Regional Arterial Corridor", "coords": "20.4625 N, 85.8830 E"})
     stream_path = f"live_{site_id}_{camera_id}"
     live_url = f"http://{NOC_PUBLIC_HOST}:8889/{stream_path}/"
     inc_id = f"INC-{datetime.fromtimestamp(now_ts).strftime('%H%M%S')}-{uuid.uuid4().hex[:4].upper()}"
-
     record = {
-        "id": inc_id,
-        "site_id": site_id,
-        "camera_id": camera_id,
-        "zone": meta["zone"],
-        "corridor": meta["corridor"],
-        "coords": meta["coords"],
-        "timestamp": ts_str,
-        "epoch": now_ts,
-        "injection_id": injection_id,
-        "snapshot": snap_filename,
-        "stream_path": stream_path,
-        "live_url": live_url,
-        "status": "NEW",
-        "priority": "CRITICAL",
-        "operator": None,
-        "dispatch_unit": None,
-        "notes": "",
+        "id": inc_id, "site_id": site_id, "camera_id": camera_id, "zone": meta["zone"], "corridor": meta["corridor"],
+        "coords": meta["coords"], "timestamp": ts_str, "epoch": now_ts, "injection_id": injection_id,
+        "snapshot": snap_filename, "stream_path": stream_path, "live_url": live_url, "status": "NEW",
+        "priority": "CRITICAL", "operator": None, "dispatch_unit": None, "notes": "",
         "history": [{"ts": ts_str, "action": "AI Collision Triggered (Edge XPU)"}]
     }
     incidents.append(record)
     save_incidents(incidents)
-
-    text = (
-        f"🚨 TRAFFIC ACCIDENT ALERT [{inc_id}]\n"
-        f"Zone: {meta['zone']}\n"
-        f"Site: {site_id} | Camera: {camera_id}\n"
-        f"Time: {ts_str}\n"
-        f"Live 4MP WebRTC Feed: {live_url}\n"
-        f"NOC Command Wall: http://i3cnoc.addsoft.local"
-    )
+    text = f"TRAFFIC ACCIDENT ALERT [{inc_id}]\nZone: {meta['zone']}\nSite: {site_id} | Camera: {camera_id}\nTime: {ts_str}\nLive 4MP Feed: {live_url}\nNOC Wall: http://i3cnoc.addsoft.local"
     send_telegram_alert(text, snap_path)
     send_email_alert(f"[URGENT] Collision Detected [{inc_id}] - {site_id} ({camera_id})", text, snap_path)
     return {"status": "received", "incident_id": inc_id, "live_url": live_url}
@@ -206,24 +155,12 @@ def create_demo_incident():
     inc_id = f"INC-{datetime.fromtimestamp(now_ts).strftime('%H%M%S')}-DEMO"
     incidents = load_incidents()
     record = {
-        "id": inc_id,
-        "site_id": "CTC_OFFICE_01",
-        "camera_id": "cam_64",
-        "zone": "Zone 1: Cuttack Core & NH-16",
-        "corridor": "Link Road – Badambadi – OMP Square",
-        "coords": "20.4625° N, 85.8830° E",
-        "timestamp": ts_str,
-        "epoch": now_ts,
-        "injection_id": f"demo_{int(now_ts)}",
-        "snapshot": None,
-        "stream_path": "live_CTC_OFFICE_01_cam_64",
-        "live_url": f"http://{NOC_PUBLIC_HOST}:8889/live_CTC_OFFICE_01_cam_64/",
-        "status": "NEW",
-        "priority": "CRITICAL",
-        "operator": None,
-        "dispatch_unit": None,
-        "notes": "Simulated NOC drill alert",
-        "history": [{"ts": ts_str, "action": "NOC Drill Incident Generated"}]
+        "id": inc_id, "site_id": "CTC_OFFICE_01", "camera_id": "cam_64", "zone": "Zone 1: Cuttack Core & NH-16",
+        "corridor": "Link Road - Badambadi - OMP Square", "coords": "20.4625 N, 85.8830 E", "timestamp": ts_str,
+        "epoch": now_ts, "injection_id": f"demo_{int(now_ts)}", "snapshot": None,
+        "stream_path": "live_CTC_OFFICE_01_cam_64", "live_url": f"http://{NOC_PUBLIC_HOST}:8889/live_CTC_OFFICE_01_cam_64/",
+        "status": "NEW", "priority": "CRITICAL", "operator": None, "dispatch_unit": None,
+        "notes": "Simulated NOC drill alert", "history": [{"ts": ts_str, "action": "NOC Drill Incident Generated"}]
     }
     incidents.append(record)
     save_incidents(incidents)
@@ -231,8 +168,7 @@ def create_demo_incident():
 
 @app.get("/api/evidence/{filename}")
 def get_evidence_file(filename: str):
-    safe_name = os.path.basename(filename)
-    path = f"{EVIDENCE_DIR}/{safe_name}"
+    path = f"{EVIDENCE_DIR}/{os.path.basename(filename)}"
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Evidence file not found")
     return FileResponse(path)

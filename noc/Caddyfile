@@ -1,3 +1,21 @@
+﻿http://deploy.addsoft.local {
+    redir http://ansible.addsoft.local{uri} 301
+}
+http://ansible.addsoft.local {
+    reverse_proxy 127.0.0.1:3000
+}
+http://nms.addsoft.local {
+    redir http://librenms.addsoft.local{uri} 301
+}
+http://librenms.addsoft.local {
+    reverse_proxy 127.0.0.1:8000
+}
+http://grafana.addsoft.local {
+    reverse_proxy 127.0.0.1:3001
+}
+http://zabbix.addsoft.local {
+    reverse_proxy 127.0.0.1:3002
+}
 http://noc.addsoft.local {
     reverse_proxy 127.0.0.1:8095
 }
@@ -15,16 +33,4 @@ http://i3cnoc.addsoft.local {
     handle {
         reverse_proxy 127.0.0.1:8889
     }
-}
-http://ansible.addsoft.local, http://deploy.addsoft.local {
-    reverse_proxy 127.0.0.1:3000
-}
-http://grafana.addsoft.local {
-    reverse_proxy 127.0.0.1:3001
-}
-http://zabbix.addsoft.local {
-    reverse_proxy 127.0.0.1:3002
-}
-http://nms.addsoft.local {
-    reverse_proxy 127.0.0.1:8000
 }
