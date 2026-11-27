@@ -525,7 +525,7 @@
           if (!vid && iframe) {
             vid = document.createElement('video');
             vid.className = 'inj-player';
-            vid.src = '/ai-api/clips/file/' + encodeURIComponent(inj.clip) + '?t=' + encodeURIComponent(inj.injection_id || '');
+            vid.src = '/control/clips/file/' + encodeURIComponent(inj.clip) + '?t=' + encodeURIComponent(inj.injection_id || '');
             vid.autoplay = true;
             vid.muted = true;
             vid.playsInline = true;
