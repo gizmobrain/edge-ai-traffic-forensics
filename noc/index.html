@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Addsoft I3C — Unified Command &amp; Control Center (NOC)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #060911; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    header { background: #0b1120; border-bottom: 1px solid #1e293b; padding: 10px 18px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; z-index: 20; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+    .brand h1 { margin: 0; font-size: 16px; font-weight: 700; color: #38bdf8; letter-spacing: 0.3px; }
+    .brand span { font-size: 11px; color: #94a3b8; display: block; }
+    .zone-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .zone-pill { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .zone-pill.active { background: #0284c7; color: #fff; border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.35); }
+    .btn { background: #0f172a; color: #38bdf8; border: 1px solid #38bdf8; border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #38bdf8; color: #0f172a; }
+    .btn-warn { border-color: #f59e0b; color: #fcd34d; }
+    .btn-warn:hover { background: #f59e0b; color: #0f172a; }
+    .btn-danger { background: #dc2626; border-color: #f87171; color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-success { background: #16a34a; border-color: #4ade80; color: #fff; }
+    .btn-success:hover { background: #15803d; }
+    .workspace { flex: 1; display: grid; grid-template-columns: 1fr 370px; overflow: hidden; }
+    .wall-stage { position: relative; background: #04070d; overflow: hidden; }
+    .zone-layer { position: absolute; inset: 0; padding: 12px; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 12px; opacity: 0; pointer-events: none; transition: opacity 0.35s ease; z-index: 1; }
+    .zone-layer.visible { opacity: 1; pointer-events: auto; z-index: 5; }
+    .feed-tile { background: #000; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+    .tile-bar { position: absolute; top: 0; left: 0; right: 0; padding: 6px 10px; background: linear-gradient(to bottom, rgba(0,0,0,0.88), transparent); display: flex; justify-content: space-between; align-items: center; z-index: 5; }
+    .tile-name { font-size: 12px; font-weight: 600; color: #f8fafc; }
+    .tile-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(15,23,42,0.85); color: #38bdf8; border: 1px solid #334155; }
+    .feed-tile iframe { width: 100%; height: 100%; border: none; flex: 1; }
+    .triage-sidebar { background: #0b1120; border-left: 1px solid #1e293b; display: flex; flex-direction: column; overflow: hidden; }
+    .sidebar-head { padding: 12px 14px; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; }
+    .sidebar-head h2 { margin: 0; font-size: 14px; color: #f8fafc; }
+    .count-badge { background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+    .incident-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+    .inc-card { background: #0f172a; border: 1px solid #334155; border-left: 4px solid #64748b; border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+    .inc-card:hover { border-color: #38bdf8; }
+    .inc-card.status-NEW { border-left-color: #ef4444; background: rgba(127, 29, 29, 0.22); }
+    .inc-card.status-ACKNOWLEDGED { border-left-color: #f59e0b; }
+    .inc-card.status-ESCALATED { border-left-color: #a855f7; }
+    .inc-card.status-RESOLVED { border-left-color: #22c55e; opacity: 0.72; }
+    .inc-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .inc-id { font-size: 12px; font-weight: 700; color: #38bdf8; }
+    .status-pill { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+    .pill-NEW { background: #dc2626; color: #fff; }
+    .pill-ACKNOWLEDGED { background: #d97706; color: #fff; }
+    .pill-ESCALATED { background: #9333ea; color: #fff; }
+    .pill-RESOLVED { background: #16a34a; color: #fff; }
+    .inc-meta { font-size: 11px; color: #cbd5e1; line-height: 1.4; }
+    .inc-time { font-size: 10px; color: #94a3b8; margin-top: 4px; }
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(2, 6, 23, 0.88); z-index: 100; padding: 20px; align-items: center; justify-content: center; }
+    .modal-backdrop.active { display: flex; }
+    .triage-modal { width: 100%; max-width: 1120px; background: #0f172a; border: 2px solid #ef4444; border-radius: 12px; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.85); display: flex; flex-direction: column; max-height: 92vh; }
+    .modal-banner { background: linear-gradient(90deg, #991b1b, #dc2626); padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; }
+    .modal-banner h3 { margin: 0; font-size: 16px; color: #fff; }
+    .modal-body { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; overflow-y: auto; }
+    .stage-box { background: #090d16; border: 1px solid #1e293b; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .stage-label { font-size: 11px; font-weight: 700; color: #38bdf8; text-transform: uppercase; }
+    .media-frame { width: 100%; height: 260px; background: #000; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid #334155; }
+    .media-frame img, .media-frame iframe { width: 100%; height: 100%; object-fit: contain; border: none; }
+    .stage-3 { grid-column: 1 / -1; background: #0b1120; border: 1px solid #334155; border-radius: 8px; padding: 14px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+    .triage-inputs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 1; }
+    .triage-inputs select, .triage-inputs input { background: #1e293b; color: #fff; border: 1px solid #475569; border-radius: 6px; padding: 7px 10px; font-size: 12px; }
+    .triage-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .audit-trail { grid-column: 1 / -1; font-size: 11px; color: #94a3b8; background: #060911; padding: 8px 12px; border-radius: 6px; border: 1px solid #1e293b; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <div>
+        <h1>ADDSOFT I3C — UNIFIED COMMAND &amp; CONTROL CENTER</h1>
+        <span id="nocClock">Federated Edge AI Telemetry • Node: ctc-srv10 (192.168.3.203)</span>
+      </div>
+    </div>
+    <div class="zone-bar">
+      <button class="zone-pill active" onclick="selectZone(0)">Zone 1: Cuttack Core</button>
+      <button class="zone-pill" onclick="selectZone(1)">Zone 2: Bhubaneswar</button>
+      <button class="zone-pill" onclick="selectZone(2)">Zone 3: Active Incident Relays</button>
+      <button class="btn" id="shuffleToggleBtn" onclick="toggleAutoShuffle()">⏯ Auto-Shuffle: ON (20s)</button>
+      <button class="btn btn-warn" onclick="triggerDemoDrill()">⚡ Test NOC Alert</button>
+    </div>
+  </header>
+  <div class="workspace">
+    <div class="wall-stage">
+      <div class="zone-layer visible" id="zone-0"></div>
+      <div class="zone-layer" id="zone-1"></div>
+      <div class="zone-layer" id="zone-2"></div>
+    </div>
+    <aside class="triage-sidebar">
+      <div class="sidebar-head">
+        <h2>🚨 Incident Triage Queue</h2>
+        <span class="count-badge" id="unackCount">0 NEW</span>
+      </div>
+      <div class="incident-list" id="incidentList">
+        <div style="font-size:12px; color:#64748b; text-align:center; padding:24px;">Monitoring federated edge nodes...</div>
+      </div>
+    </aside>
+  </div>
+  <div class="modal-backdrop" id="triageModal">
+    <div class="triage-modal">
+      <div class="modal-banner">
+        <h3 id="modalHeaderTitle">🚨 CRITICAL COLLISION ALERT</h3>
+        <button class="btn" style="background:rgba(0,0,0,0.4); color:#fff; border-color:#fff;" onclick="closeTriageModal()">Minimize (Esc)</button>
+      </div>
+      <div class="modal-body">
+        <div class="stage-box">
+          <div class="stage-label">Stage 1 • Edge AI Collision Snapshot &amp; GIS Telemetry</div>
+          <div class="media-frame" id="modalSnapshotBox"></div>
+          <div style="font-size:12px; color:#cbd5e1;" id="modalGisMeta"></div>
+        </div>
+        <div class="stage-box">
+          <div class="stage-label">Stage 2 • Live Relayed 4MP WebRTC Verification Feed</div>
+          <div class="media-frame" id="modalLiveStreamBox"></div>
+          <div style="font-size:11px; color:#94a3b8;" id="modalStreamUrl"></div>
+        </div>
+        <div class="stage-3">
+          <div class="triage-inputs">
+            <select id="dispatchUnitSelect">
+              <option value="PCR Van + 108 Ambulance">Dispatch: PCR Van + 108 Ambulance</option>
+              <option value="Traffic Interceptor + Crane">Dispatch: Traffic Interceptor + Recovery Crane</option>
+              <option value="Fire Tender + Trauma Unit">Dispatch: Fire Tender + Trauma Unit</option>
+            </select>
+            <input type="text" id="triageNotesInput" placeholder="Operator field notes / badge ID..." style="min-width:220px;">
+          </div>
+          <div class="triage-actions">
+            <button class="btn btn-warn" onclick="submitTriage('acknowledge')">👁 Acknowledge</button>
+            <button class="btn btn-danger" onclick="submitTriage('escalate')">🚓 Escalate &amp; Dispatch</button>
+            <button class="btn btn-success" onclick="submitTriage('resolve')">✅ Mark Resolved</button>
+          </div>
+        </div>
+        <div class="audit-trail" id="modalAuditTrail"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const EDGE_HOST = '192.168.3.236';
+    const NOC_HOST = window.location.hostname || '192.168.3.203';
+    const ZONES = [
+      [
+        { title: 'Link Road Jn (CAM 04)', url: `http://${EDGE_HOST}:8889/cam_4_sub/`, tag: 'CTC-EDGE-01' },
+        { title: 'Badambadi Square (CAM 07)', url: `http://${EDGE_HOST}:8889/cam_7_sub/`, tag: 'CTC-EDGE-01' },
+        { title: 'OMP Flyover Entry (CAM 09)', url: `http://${EDGE_HOST}:8889/cam_9_sub/`, tag: 'CTC-EDGE-01' },
+        { title: 'Madhupatna Junction (CAM 11)', url: `http://${EDGE_HOST}:8889/cam_11_sub/`, tag: 'CTC-EDGE-01' }
+      ],
+      [
+        { title: 'Rasulgarh Square (CAM 12)', url: `http://${EDGE_HOST}:8889/cam_12_sub/`, tag: 'BBSR-CORRIDOR' },
+        { title: 'Vani Vihar NH-16 (CAM 22)', url: `http://${EDGE_HOST}:8889/cam_22_sub/`, tag: 'BBSR-CORRIDOR' },
+        { title: 'Jaydev Vihar (CAM 23)', url: `http://${EDGE_HOST}:8889/cam_23_sub/`, tag: 'BBSR-CORRIDOR' },
+        { title: 'Patia KIIT Square (CAM 64)', url: `http://${EDGE_HOST}:8889/cam_64_sub/`, tag: 'BBSR-CORRIDOR' }
+      ],
+      [
+        { title: 'Incident Relay Slot 1 (CAM 64)', url: `http://${NOC_HOST}:8889/live_CTC_OFFICE_01_cam_64/`, tag: 'NOC-RELAY' },
+        { title: 'Incident Relay Slot 2 (CAM 04)', url: `http://${NOC_HOST}:8889/live_CTC_OFFICE_01_cam_4/`, tag: 'NOC-RELAY' },
+        { title: 'Incident Relay Slot 3 (CAM 11)', url: `http://${NOC_HOST}:8889/live_CTC_OFFICE_01_cam_11/`, tag: 'NOC-RELAY' },
+        { title: 'Incident Relay Slot 4 (CAM 12)', url: `http://${NOC_HOST}:8889/live_CTC_OFFICE_01_cam_12/`, tag: 'NOC-RELAY' }
+      ]
+    ];
+    let currentZone = 0, autoShuffle = true, incidentsCache = [], activeIncident = null;
+    const autoPoppedIds = new Set();
+
+    function initPreWarmedZones() {
+      ZONES.forEach((cams, zIdx) => {
+        document.getElementById(`zone-${zIdx}`).innerHTML = cams.map(c => `
+          <div class="feed-tile">
+            <div class="tile-bar"><span class="tile-name">${c.title}</span><span class="tile-tag">${c.tag}</span></div>
+            <iframe src="${c.url}" loading="eager"></iframe>
+          </div>
+        `).join('');
+      });
+    }
+    function selectZone(idx) {
+      currentZone = idx;
+      document.querySelectorAll('.zone-layer').forEach((el, i) => el.classList.toggle('visible', i === idx));
+      document.querySelectorAll('.zone-pill').forEach((btn, i) => btn.classList.toggle('active', i === idx));
+    }
+    function toggleAutoShuffle() {
+      autoShuffle = !autoShuffle;
+      document.getElementById('shuffleToggleBtn').textContent = autoShuffle ? '⏯ Auto-Shuffle: ON (20s)' : '⏸ Auto-Shuffle: PAUSED';
+    }
+    setInterval(() => {
+      document.getElementById('nocClock').textContent = `Federated Edge AI Telemetry • ${new Date().toLocaleTimeString()} IST • Node: ctc-srv10`;
+    }, 1000);
+    setInterval(() => { if (autoShuffle && !activeIncident) selectZone((currentZone + 1) % ZONES.length); }, 20000);
+
+    async function pollIncidents() {
+      try {
+        const res = await fetch('/noc-api/api/incidents');
+        if (!res.ok) return;
+        const data = await res.json();
+        incidentsCache = data.incidents || [];
+        renderIncidentQueue();
+        const newestNew = incidentsCache.find(i => i.status === 'NEW' && !autoPoppedIds.has(i.id));
+        if (newestNew) { autoPoppedIds.add(newestNew.id); openTriageModal(newestNew); }
+      } catch (e) {}
+    }
+    function renderIncidentQueue() {
+      const list = document.getElementById('incidentList');
+      const newCount = incidentsCache.filter(i => i.status === 'NEW').length;
+      const badge = document.getElementById('unackCount');
+      badge.textContent = `${newCount} NEW`;
+      badge.style.background = newCount > 0 ? '#dc2626' : '#334155';
+      if (!incidentsCache.length) return;
+      list.innerHTML = incidentsCache.map(inc => `
+        <div class="inc-card status-${inc.status}" onclick='openTriageModalById("${inc.id}")'>
+          <div class="inc-top"><span class="inc-id">${inc.id}</span><span class="status-pill pill-${inc.status}">${inc.status}</span></div>
+          <div class="inc-meta"><strong>${inc.site_id} • ${inc.camera_id.toUpperCase()}</strong><br>${inc.zone}</div>
+          <div class="inc-time">${inc.timestamp}${inc.dispatch_unit ? ' • 🚓 ' + inc.dispatch_unit : ''}</div>
+        </div>
+      `).join('');
+    }
+    function openTriageModalById(id) { const f = incidentsCache.find(i => i.id === id); if (f) openTriageModal(f); }
+    function openTriageModal(inc) {
+      activeIncident = inc;
+      document.getElementById('modalHeaderTitle').textContent = `🚨 ${inc.status} COLLISION ALERT — ${inc.id} (${inc.site_id} / ${inc.camera_id.toUpperCase()})`;
+      const snapBox = document.getElementById('modalSnapshotBox');
+      snapBox.innerHTML = inc.snapshot
+        ? `<img src="/noc-api/api/evidence/${encodeURIComponent(inc.snapshot)}" alt="Collision Snapshot">`
+        : `<div style="color:#94a3b8; font-size:12px; padding:16px; text-align:center;">Drill Alert (No snapshot attached — see live WebRTC stream on right)</div>`;
+      document.getElementById('modalGisMeta').innerHTML = `<strong>Corridor:</strong> ${inc.corridor} &nbsp;|&nbsp; <strong>GPS:</strong> ${inc.coords} &nbsp;|&nbsp; <strong>Detected:</strong> ${inc.timestamp}`;
+      document.getElementById('modalLiveStreamBox').innerHTML = `<iframe src="http://${NOC_HOST}:8889/${inc.stream_path}/"></iframe>`;
+      document.getElementById('modalStreamUrl').textContent = `Relayed WebRTC Endpoint: http://${NOC_HOST}:8889/${inc.stream_path}/`;
+      document.getElementById('triageNotesInput').value = inc.notes || '';
+      document.getElementById('modalAuditTrail').innerHTML = `<strong>Audit Trail:</strong> ` + (inc.history || []).map(h => `[${h.ts}] ${h.action}`).join(' &rarr; ');
+      document.getElementById('triageModal').classList.add('active');
+    }
+    function closeTriageModal() {
+      document.getElementById('triageModal').classList.remove('active');
+      document.getElementById('modalLiveStreamBox').innerHTML = '';
+      activeIncident = null;
+    }
+    async function submitTriage(action) {
+      if (!activeIncident) return;
+      const res = await fetch(`/noc-api/api/incidents/${activeIncident.id}/triage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          operator: 'NOC Supervisor',
+          dispatch_unit: document.getElementById('dispatchUnitSelect').value,
+          notes: document.getElementById('triageNotesInput').value
+        })
+      });
+      if (res.ok) { const d = await res.json(); await pollIncidents(); openTriageModal(d.incident); }
+    }
+    async function triggerDemoDrill() { await fetch('/noc-api/api/test-incident', { method: 'POST' }); await pollIncidents(); }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTriageModal(); });
+    initPreWarmedZones(); pollIncidents(); setInterval(pollIncidents, 2000);
+  </script>
+</body>
+</html>

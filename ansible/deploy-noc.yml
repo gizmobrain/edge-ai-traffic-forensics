@@ -1,0 +1,27 @@
+---
+- name: Deploy Central NOC Command Center to ctc-srv10
+  hosts: ctc_srv10
+  become: true
+  tasks:
+    - name: Sync noc-receiver main.py
+      copy:
+        src: ../noc/main.py
+        dest: /opt/noc-receiver/app/main.py
+        mode: "0644"
+
+    - name: Sync Caddyfile and NOC Dashboard UI
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "0644"
+      loop:
+        - { src: "../noc/Caddyfile", dest: "/opt/reverse-proxy/Caddyfile" }
+        - { src: "../noc/index.html", dest: "/opt/reverse-proxy/index.html" }
+
+    - name: Rebuild and restart noc-receiver
+      command: docker compose up -d --build noc-receiver
+      args:
+        chdir: /opt/noc-receiver
+
+    - name: Restart caddy-proxy
+      command: docker restart caddy-proxy

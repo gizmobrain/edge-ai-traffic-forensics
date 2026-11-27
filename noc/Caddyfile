@@ -1,0 +1,30 @@
+http://noc.addsoft.local {
+    reverse_proxy 127.0.0.1:8095
+}
+http://i3cnoc.addsoft.local {
+    handle / {
+        root * /srv/noc-ui
+        file_server
+    }
+    handle_path /noc-api/* {
+        reverse_proxy 127.0.0.1:8095
+    }
+    handle_path /api/* {
+        reverse_proxy 127.0.0.1:9997
+    }
+    handle {
+        reverse_proxy 127.0.0.1:8889
+    }
+}
+http://ansible.addsoft.local, http://deploy.addsoft.local {
+    reverse_proxy 127.0.0.1:3000
+}
+http://grafana.addsoft.local {
+    reverse_proxy 127.0.0.1:3001
+}
+http://zabbix.addsoft.local {
+    reverse_proxy 127.0.0.1:3002
+}
+http://nms.addsoft.local {
+    reverse_proxy 127.0.0.1:8000
+}
