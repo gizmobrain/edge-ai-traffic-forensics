@@ -23,7 +23,7 @@ services:
     environment:
       - SITE_ID=CTC_OFFICE_01
       - NOC_STREAM_URL=rtsp://192.168.3.203:8554/live
-      - NOC_WEBHOOK=http://noc.addsoft.local
+      - NOC_WEBHOOK=http://192.168.3.203
     devices:
       - /dev/dri:/dev/dri
     volumes:
