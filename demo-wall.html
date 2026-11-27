@@ -109,9 +109,12 @@
 
       <div class="form-row">
         <label>3. Normalized Crash Clip</label>
-        <select id="injectClipSelect">
-          <option value="">-- Loading clips --</option>
-        </select>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select id="injectClipSelect" style="flex:1;">
+            <option value="">-- Loading clips --</option>
+          </select>
+          <button type="button" onclick="deleteSelectedClip()" title="Delete selected saved clip" style="background:#dc2626; color:#fff; border:none; border-radius:6px; padding:8px 12px; font-weight:600; cursor:pointer; white-space:nowrap;">Delete Clip</button>
+        </div>
       </div>
 
       <div class="form-row" style="flex-direction:row; align-items:center; gap:8px;">
@@ -318,6 +321,7 @@
           vid.className = 'inj-player';
           vid.src = '/control/clips/file/' + encodeURIComponent(inj.clip) + '?t=' + encodeURIComponent(inj.injection_id || '');
           vid.autoplay = true;
+          vid.loop = true;
           vid.muted = true;
           vid.playsInline = true;
           vid.style.cssText = 'width:100%;height:100%;object-fit:contain;position:absolute;inset:0;z-index:5;background:#000;';
@@ -527,6 +531,7 @@
             vid.className = 'inj-player';
             vid.src = '/control/clips/file/' + encodeURIComponent(inj.clip) + '?t=' + encodeURIComponent(inj.injection_id || '');
             vid.autoplay = true;
+          vid.loop = true;
             vid.muted = true;
             vid.playsInline = true;
             vid.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;z-index:5;background:#000;';
@@ -540,11 +545,11 @@
     }
 
     async function deleteSelectedClip() {
-      const sel = document.getElementById('injClip');
+      const sel = document.getElementById('injectClipSelect');
       if (!sel || !sel.value) return;
       if (!confirm('Delete saved clip ' + sel.value + '?')) return;
       await fetch('/control/clips/' + encodeURIComponent(sel.value), { method: 'DELETE' });
-      if (typeof syncState === 'function') syncState();
+      if (typeof pollControllerState === 'function') pollControllerState();
     }
 </script>
 </body>

@@ -73,11 +73,8 @@ def stream_reader(ch):
         ret, frame = cap.read()
         if not ret:
             if active_clip:
-                with inject_lock:
-                    active_injections.pop(ch, None)
-                active_clip = None
                 cap.release()
-                cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+                cap = cv2.VideoCapture(active_clip, cv2.CAP_FFMPEG)
                 continue
             time.sleep(2)
             cap.release()
@@ -121,18 +118,30 @@ def handle_accident(ch, event_ts, frame, mode, injection_id=None):
         target_rtsp = f"{NOC_STREAM_URL}_{SITE_ID}_cam_{ch}"
         relay_secs = "90" if mode == "test" else "600"
         print(f"[RELAY] Pushing live stream to {target_rtsp} for {relay_secs}s", flush=True)
-        subprocess.Popen([
-            "ffmpeg", "-hide_banner", "-loglevel", "error",
-            "-rtsp_transport", "tcp", "-i", f"rtsp://mediamtx:8554/cam_{ch}_main",
-            "-t", relay_secs, "-c:v", "copy", "-an",
-            "-rtsp_transport", "tcp", "-f", "rtsp", target_rtsp
-        ])
+        with inject_lock:
+            cur_inj = active_injections.get(ch)
+            inj_clip = cur_inj.get("clip_path") if cur_inj else None
+        if inj_clip and os.path.exists(inj_clip):
+            ffmpeg_cmd = [
+                "ffmpeg", "-hide_banner", "-loglevel", "error",
+                "-stream_loop", "-1", "-re", "-i", inj_clip,
+                "-t", relay_secs, "-c:v", "copy", "-an",
+                "-rtsp_transport", "tcp", "-f", "rtsp", target_rtsp
+            ]
+        else:
+            ffmpeg_cmd = [
+                "ffmpeg", "-hide_banner", "-loglevel", "error",
+                "-rtsp_transport", "tcp", "-i", f"rtsp://mediamtx:8554/cam_{ch}_main",
+                "-t", relay_secs, "-c:v", "copy", "-an",
+                "-rtsp_transport", "tcp", "-f", "rtsp", target_rtsp
+            ]
+        subprocess.Popen(ffmpeg_cmd)
 
-    # Dispatch webhook (Telegram/NOC) ONLY when Armed (or tagged demo=true in Test)
-    if NOC_WEBHOOK and mode == "armed":
+    # Dispatch webhook (Telegram/NOC) when Armed or during active demo injection
+    if NOC_WEBHOOK and (mode == "armed" or injection_id):
         try:
             with open(snap_path, "rb") as img:
-                requests.post(
+                resp = requests.post(
                     f"{NOC_WEBHOOK}/api/accident-alert",
                     data={
                         "site_id": SITE_ID,
@@ -141,8 +150,9 @@ def handle_accident(ch, event_ts, frame, mode, injection_id=None):
                         "injection_id": injection_id or ""
                     },
                     files={"snapshot": (os.path.basename(snap_path), img, "image/jpeg")},
-                    timeout=5
+                    timeout=8
                 )
+            print(f"[NOC] Webhook POST {NOC_WEBHOOK}/api/accident-alert -> HTTP {resp.status_code}", flush=True)
         except Exception as e:
             print(f"[WARN] NOC webhook failed: {e}", flush=True)
 
@@ -433,6 +443,16 @@ def serve_clip_file(clip_name: str):
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Clip file not found")
     return FileResponse(path, media_type="video/mp4")
+
+
+@app.delete("/clips/{clip_name}")
+def delete_clip_file(clip_name: str):
+    safe = os.path.basename(clip_name)
+    path = f"{CLIPS_DIR}/{safe}"
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Clip file not found")
+    os.remove(path)
+    return {"status": "deleted", "clip": safe}
 
 if __name__ == "__main__":
     threading.Thread(target=ai_loop, daemon=True).start()
