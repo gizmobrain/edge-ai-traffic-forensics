@@ -333,6 +333,13 @@ def run_single_shot_injection(ch: int, clip_path: str, injection_id: str, prev_m
         cam_modes[ch] = prev_mode
         print(f"[INJECT] Completed & restored live NVR feed on CAM {ch} (mode={prev_mode})", flush=True)
 
+@app.delete("/clips/{clip_name}")
+def delete_clip(clip_name: str):
+target = os.path.join(CLIPS_DIR, os.path.basename(clip_name))
+if not os.path.exists(target):
+    raise HTTPException(status_code=404, detail="Clip not found")
+os.remove(target)
+return {"deleted": os.path.basename(clip_name)}
 @app.post("/inject")
 def trigger_inject(req: InjectRequest):
     if req.ch not in cam_modes:
@@ -350,7 +357,7 @@ def trigger_inject(req: InjectRequest):
             cam_modes[req.ch] = "armed"
         active_injections[req.ch] = {
             "injection_id": inj_id,
-            "clip": os.path.basename(clip_path),
+            "clip": os.path.basename(clip_path), "clip_path": clip_path,
             "triggered": False,
             "started_at": time.time()
         }
